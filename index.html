@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>STYLUS</title>
+<meta name="description" content="Membretes de envío, clientes frecuentes y guías por WhatsApp.">
+<meta name="theme-color" content="#111111">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="STYLUS">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Archivo+Black&display=swap">
+<style>
+/* Layout: app móvil de una columna (máx. 560px). Cabecera negra con la marca, barra inferior de 5 secciones. */
+:root{
+  --ink:#111111; --ink2:#2A2A2A; --paper:#FFFFFF; --mist:#F3F3F1; --line:#E2E1DD; --muted:#6B6A66;
+  --gold:#C9A227; --gold-bg:#FBF3D9; --ok:#1E7F4A; --ok-bg:#E3F4EA; --warn:#A35F00; --warn-bg:#FDF0DA;
+  --blue:#2459A0; --blue-bg:#E2ECF8; --bad:#B3261E; --bad-bg:#F9E1DF; --wa:#1DA851;
+  --display:"Archivo Black","Arial Black",system-ui,sans-serif;
+  --body:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r:14px; color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--mist);color:var(--ink);font:16px/1.4 var(--body);-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+img{max-width:100%}
+[hidden]{display:none!important}
+.app{max-width:560px;margin:0 auto;min-height:100%;background:var(--paper);display:flex;flex-direction:column}
+.top{background:var(--ink);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 10px) max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20}
+.top .logo{width:46px;height:46px;border-radius:12px;background:#fff;flex:none;display:grid;place-items:center;overflow:hidden;padding:3px}
+.top .logo img{width:100%;height:100%;object-fit:contain}
+.top .t1{font:20px/1.05 var(--display);letter-spacing:.5px;text-transform:uppercase}
+.top .t2{font-size:13px;opacity:.75}
+.top .grow{flex:1;min-width:0}
+.top .grow div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .cnt{background:var(--gold);color:var(--ink);border-radius:999px;font-weight:800;font-size:13px;padding:4px 10px;white-space:nowrap;cursor:pointer;border:0}
+main{flex:1;padding:16px max(16px,env(safe-area-inset-right,0px)) 112px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:30;background:var(--paper);border-top:1px solid var(--line);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+nav.tabs .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:2px}
+nav.tabs button{border:0;background:none;padding:6px 2px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11.5px;font-weight:700;color:var(--muted);cursor:pointer;border-radius:10px}
+nav.tabs button svg{width:24px;height:24px}
+nav.tabs button.on{color:var(--ink)}
+nav.tabs button.on svg{stroke-width:2.6}
+nav.tabs button.plus .ic{background:var(--ink);color:#fff;border-radius:16px;width:54px;height:40px;display:grid;place-items:center;margin-top:-4px;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+h1,h2,h3{margin:0;line-height:1.05;text-wrap:balance}
+h2{font:24px var(--display);text-transform:uppercase;letter-spacing:.3px}
+h3{font:16px var(--display);text-transform:uppercase;letter-spacing:.6px}
+.sub{color:var(--muted);font-size:14px}
+.hint{font-size:13px;color:var(--muted)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.between{justify-content:space-between}
+.stack{display:flex;flex-direction:column;gap:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid2>*{min-width:0}
+.btn{border:1.5px solid var(--line);background:var(--paper);border-radius:12px;padding:11px 14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;color:var(--ink);text-decoration:none}
+.btn svg{width:20px;height:20px;flex:none}
+.btn.pri{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+.btn.wa{background:var(--wa);border-color:var(--wa);color:#fff}
+.btn.ghost{background:var(--mist);border-color:transparent}
+.btn.sm{min-height:36px;padding:6px 11px;font-size:14px;border-radius:10px}
+.btn.block{width:100%}
+.btn.big{min-height:60px;font:18px var(--display);text-transform:uppercase;letter-spacing:.6px;border-radius:16px}
+.btn[disabled]{opacity:.4;pointer-events:none}
+.btn:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,nav.tabs button:focus-visible{outline:3px solid rgba(201,162,39,.55);outline-offset:2px}
+.card{border:1px solid var(--line);border-radius:var(--r);padding:14px;background:var(--paper)}
+.card.soft{background:var(--mist);border-color:transparent}
+.card.dark{background:var(--ink);color:#fff;border-color:var(--ink)}
+.field{display:flex;flex-direction:column;gap:5px;position:relative}
+.field label{font-size:12.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;gap:6px}
+.field label img{width:16px;height:16px;object-fit:contain}
+.field input,.field select,.field textarea{border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;background:#fff;min-height:48px;width:100%;font-size:17px}
+.field textarea{min-height:84px;resize:vertical;font-size:15px}
+.sugg{position:absolute;left:0;right:0;top:100%;z-index:25;background:#fff;border:1.5px solid var(--ink);border-radius:12px;margin-top:4px;box-shadow:0 12px 28px rgba(0,0,0,.18);overflow:hidden}
+.sugg button{display:flex;width:100%;text-align:left;gap:10px;align-items:center;border:0;border-bottom:1px solid var(--line);background:#fff;padding:10px 12px;cursor:pointer}
+.sugg button:last-child{border-bottom:0}
+.sugg button b{display:block}
+.sugg button small{color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 9px;font-size:12.5px;font-weight:800;white-space:nowrap}
+.pill.nuevo{background:var(--mist);color:var(--muted)} .pill.frec{background:var(--blue-bg);color:var(--blue)} .pill.vip{background:var(--gold-bg);color:#7A5B00}
+.pill.pend{background:var(--warn-bg);color:var(--warn)} .pill.env{background:var(--blue-bg);color:var(--blue)} .pill.ent{background:var(--ok-bg);color:var(--ok)}
+.pill.imp{background:var(--mist);color:var(--muted)}
+.list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.item{display:flex;align-items:center;gap:12px;padding:11px 12px;border-bottom:1px solid var(--line);background:#fff;cursor:pointer;min-height:62px}
+.item:last-child{border-bottom:0}
+.item .nm{flex:1;min-width:0}
+.item .nm b{display:block;font-weight:700;line-height:1.2}
+.item .nm small{color:var(--muted);font-size:13px}
+.num{font-variant-numeric:tabular-nums}
+.badge{width:42px;height:42px;border-radius:12px;background:var(--mist);display:grid;place-items:center;font-weight:800;font-size:13px;flex:none;font-variant-numeric:tabular-nums}
+.badge.k{background:var(--ink);color:#fff}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.chip{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font-size:14px;font-weight:700;white-space:nowrap;cursor:pointer}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.search{position:relative}
+.search svg{position:absolute;left:12px;top:14px;width:20px;height:20px;color:var(--muted)}
+.search input{padding-left:40px}
+.empty{text-align:center;padding:26px 12px;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font:18px var(--display);text-transform:uppercase;margin-bottom:4px}
+.banner{background:var(--gold-bg);color:#5C4400;border-radius:12px;padding:12px 14px;font-weight:600}
+.banner.ok{background:var(--ok-bg);color:var(--ok)}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.stat{border-radius:12px;padding:12px;background:var(--mist)}
+.stat b{display:block;font:30px/1 var(--display);font-variant-numeric:tabular-nums}
+.stat span{font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.stat.k{background:var(--ink);color:#fff} .stat.k span{color:#bbb}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar{display:grid;grid-template-columns:110px 1fr 36px;gap:8px;align-items:center;font-size:14px}
+.bar .tr{background:var(--mist);border-radius:6px;height:14px;overflow:hidden}
+.bar .tr i{display:block;height:100%;background:var(--ink);border-radius:6px}
+.bar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ov{position:fixed;inset:0;background:rgba(17,17,17,.55);z-index:50;display:flex;align-items:flex-end;justify-content:center;animation:fade .15s}
+.sheet{background:#fff;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:10px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px;animation:up .2s}
+.sheet .grab{width:44px;height:5px;border-radius:3px;background:var(--line);margin:0 auto}
+@keyframes up{from{transform:translateY(30px);opacity:.6}}
+@keyframes fade{from{opacity:0}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.toast{position:fixed;left:50%;top:calc(76px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;z-index:80;font-weight:700;max-width:calc(100% - 32px);text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;word-break:break-all;background:var(--mist);border-radius:10px;padding:10px}
+.hero{background:var(--ink);color:#fff;border-radius:20px;padding:24px 20px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.hero img{width:170px}
+.hero p{margin:0;opacity:.85}
+/* Membrete (vista previa e impresión) */
+.lblwrap{overflow:hidden;border-radius:10px;border:1px solid var(--line);background:#fff}
+.sheetP{width:215.9mm;height:279.4mm;padding:6.35mm;background:#fff;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(4,1fr);transform-origin:top left}
+.lbl{border:.55mm solid #000;display:grid;grid-template-columns:36% 64%;padding:2.5mm 3mm;gap:2mm;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff}
+.lbl .lg{display:grid;place-items:center;overflow:hidden}
+.lbl .lg img{max-width:100%;max-height:44mm;object-fit:contain}
+.lbl .lg .txt{font:900 7mm/1 "Archivo Black",Arial Black,sans-serif;text-align:center;word-break:break-word}
+.lbl .fs{display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.lbl .no{text-align:right;font-weight:700;font-size:3.4mm;height:4.5mm}
+.lbl .f{display:grid;grid-template-columns:6mm 1fr;gap:1.5mm;align-items:end;flex:1}
+.lbl .f img{width:5.5mm;height:5.5mm;object-fit:contain;margin-bottom:.8mm}
+.lbl .f div{border-bottom:.35mm solid #000;min-height:7mm;font-weight:700;font-size:4.1mm;line-height:1.15;padding-bottom:.6mm;overflow:hidden;word-break:break-word}
+/* Recorte de guía */
+.cropbox{position:relative;touch-action:none;user-select:none;background:#222;border-radius:10px;overflow:hidden}
+.cropbox canvas{display:block;width:100%;height:auto}
+.crop{position:absolute;border:2px solid var(--gold);box-shadow:0 0 0 9999px rgba(0,0,0,.45)}
+.crop i{position:absolute;width:26px;height:26px;background:var(--gold);border-radius:50%;border:3px solid #fff}
+.crop i[data-h=tl]{left:-13px;top:-13px} .crop i[data-h=tr]{right:-13px;top:-13px} .crop i[data-h=bl]{left:-13px;bottom:-13px} .crop i[data-h=br]{right:-13px;bottom:-13px}
+.guiaimg{width:100%;border-radius:10px;border:1px solid var(--line);background:var(--mist)}
+#print{display:none}
+@media print{
+  @page{size:letter portrait;margin:0}
+  body{background:#fff}
+  .app,nav.tabs,.ov,.toast{display:none!important}
+  #print{display:block}
+  #print .sheetP{page-break-after:always;break-after:page;transform:none!important}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<nav class="tabs" id="tabs" hidden></nav>
+<div id="print"></div>
+
+<script>
+'use strict';
+/* =========================================================
+   STYLUS — membretes de envío, clientes y guías por WhatsApp
+   Datos guardados en el celular (IndexedDB).
+   ========================================================= */
+const APP_VERSION = '1.0.0';
+const ADMIN_PUB = {kty:'EC',crv:'P-256',x:'4FQodfEaGt87OxQGmwuweN7UhL1yra0rtaM3065_pNU',y:'E4ckp3sAiVOfUVeKxXcGKJjg5U9CezfyCGq2MkF45GU',ext:true};
+const PER_SHEET = 8;
+
+/* ---------- Utilidades ---------- */
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = (n, l=2) => String(n).padStart(l,'0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today = () => ymd(new Date());
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const fCorta = iso => { const d = new Date(iso); return `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}`; };
+const fHora = iso => { const d = new Date(iso); return `${fCorta(iso)}, ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const uid = (n=10) => { const a = new Uint8Array(n); crypto.getRandomValues(a); return [...a].map(x => 'abcdefghijkmnpqrstuvwxyz23456789'[x % 32]).join(''); };
+const norm = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+const titleCase = s => String(s||'').toLowerCase().replace(/(^|[\s\-])(\S)/g, (m,a,b) => a + b.toUpperCase());
+const digits = s => String(s||'').replace(/\D/g,'');
+const fmtNum = n => 'N° ' + pad(n, 4);
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const ub64u = s => { s = s.replace(/-/g,'+').replace(/_/g,'/'); while(s.length % 4) s += '='; const b = atob(s); const u = new Uint8Array(b.length); for(let i=0;i<b.length;i++) u[i] = b.charCodeAt(i); return u; };
+const enc = new TextEncoder(), dec = new TextDecoder();
+const baseURL = () => location.origin + location.pathname.replace(/index\.html$/,'');
+function phoneWA(p){ let d = digits(p); if(!d) return ''; if(d.length === 8) d = '591' + d; return d; }
+const validPhone = p => { const d = digits(p); return (d.length === 8 && /^[67]/.test(d)) || (d.length === 11 && /^591[67]/.test(d)); };
+let toastT;
+function toast(msg){ let t = $('.toast'); if(!t){ t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); } t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2800); }
+async function copyText(txt, ok='Copiado'){ try{ await navigator.clipboard.writeText(txt); toast(ok); return true; }catch(e){ const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); let r = false; try{ r = document.execCommand('copy'); }catch(_){} ta.remove(); if(r) toast(ok); return r; } }
+function openWA(phone, text){ const p = phoneWA(phone); window.open((p ? `https://wa.me/${p}` : 'https://wa.me/') + '?text=' + encodeURIComponent(text), '_blank'); }
+function downloadBlob(blob, name){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }
+async function shareOrDownload(blob, name, text){
+  const file = new File([blob], name, {type:blob.type});
+  if(navigator.canShare && navigator.canShare({files:[file]})){ try{ await navigator.share(text ? {files:[file], text} : {files:[file]}); return 'shared'; }catch(e){ if(e.name === 'AbortError') return 'cancel'; } }
+  downloadBlob(blob, name); return 'download';
+}
+function loadScript(src){ return new Promise((ok, no) => { if($(`script[src="${src}"]`) && window.__loaded && window.__loaded[src]) return ok(); const s = document.createElement('script'); s.src = src; s.onload = () => { (window.__loaded = window.__loaded || {})[src] = 1; ok(); }; s.onerror = no; document.head.appendChild(s); }); }
+const blobToDataURL = b => new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(b); });
+const dataURLToBlob = async u => (await fetch(u)).blob();
+
+/* ---------- Base de datos (IndexedDB) ---------- */
+const DB = {
+  db:null,
+  open(){ return new Promise((ok, no) => { const r = indexedDB.open('stylus', 1); r.onupgradeneeded = () => { r.result.createObjectStore('kv'); r.result.createObjectStore('img'); }; r.onsuccess = () => { this.db = r.result; ok(); }; r.onerror = () => no(r.error); }); },
+  get(st, k){ return new Promise(ok => { try{ const q = this.db.transaction(st).objectStore(st).get(k); q.onsuccess = () => ok(q.result); q.onerror = () => ok(undefined); }catch(e){ ok(undefined); } }); },
+  set(st, k, v){ return new Promise((ok, no) => { const tx = this.db.transaction(st, 'readwrite'); tx.objectStore(st).put(v, k); tx.oncomplete = () => ok(); tx.onerror = () => no(tx.error); }); },
+  del(st, k){ return new Promise(ok => { const tx = this.db.transaction(st, 'readwrite'); tx.objectStore(st).delete(k); tx.oncomplete = () => ok(); tx.onerror = () => ok(); }); },
+  keys(st){ return new Promise(ok => { const q = this.db.transaction(st).objectStore(st).getAllKeys(); q.onsuccess = () => ok(q.result || []); q.onerror = () => ok([]); }); }
+};
+function defaultCfg(){
+  return {
+    marca:'STYLUS', lema:'Born to win', logo:'default', nextNum:1,
+    nivFrec:3, nivVip:6,
+    descOn:true, descCada:5, descPct:10, vipOn:false, vipPct:5,
+    msgRec:'¡Hola {nombre}! 👋 Recibimos tu pedido *{pedido}* en *{marca}*. Te avisaremos cuando sea enviado a {ciudad}. ¡Gracias por tu compra!',
+    msgEnv:'📦 ¡Hola {nombre}! Tu pedido *{pedido}* ya fue enviado a *{ciudad}*.{guia} Te enviamos la foto de la guía de envío. ¡Gracias por confiar en *{marca}*!',
+    msgEnt:'🙌 ¡Hola {nombre}! Esperamos que disfrutes tu pedido {pedido}. Gracias por elegir *{marca}*. ¡Te esperamos pronto!',
+    msgPromo:'🎁 ¡Hola {nombre}! Por ser cliente *{nivel}* de *{marca}*, tienes *{descuento}% de descuento* en tu próxima compra. ¡Te esperamos!',
+    msgDesc:'🎉 Por ser tu {n}.º pedido tienes *{descuento}% de descuento*.'
+  };
+}
+let cfg = defaultCfg(), clients = [], orders = [], lic = null;
+const LSget = (k, d) => { try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } };
+const LSset = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+async function loadAll(){
+  await DB.open();
+  cfg = Object.assign(defaultCfg(), await DB.get('kv', 'cfg') || {});
+  clients = await DB.get('kv', 'clients') || [];
+  orders = await DB.get('kv', 'orders') || [];
+  lic = await DB.get('kv', 'lic') || LSget('stylus_lic', null);
+}
+const saveCfg = () => DB.set('kv', 'cfg', cfg);
+const saveClients = () => DB.set('kv', 'clients', clients);
+const saveOrders = () => DB.set('kv', 'orders', orders);
+const saveLic = () => { DB.set('kv', 'lic', lic); LSset('stylus_lic', lic); };
+
+/* ---------- Íconos ---------- */
+const sv = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const I = {
+  plus: sv('<path d="M12 5v14M5 12h14"/>'),
+  box: sv('<path d="M21 8 12 3 3 8v8l9 5 9-5V8z"/><path d="m3 8 9 5 9-5M12 13v8"/>'),
+  users: sv('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>'),
+  chart: sv('<path d="M3 3v18h18"/><path d="M7 15v3M11 10v8M15 12v6M19 6v12"/>'),
+  more: sv('<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>'),
+  doc: sv('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>'),
+  print: sv('<path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>'),
+  cam: sv('<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>'),
+  search: sv('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'),
+  left: sv('<path d="m15 18-6-6 6-6"/>'),
+  right: sv('<path d="m9 18 6-6-6-6"/>'),
+  paste: sv('<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/>'),
+  dl: sv('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>'),
+  check: sv('<path d="m5 12 5 5 9-10"/>'),
+  rot: sv('<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>'),
+  lock: sv('<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'),
+  gift: sv('<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/>'),
+  wa: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.1-1.8-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6l.4-.5c.2-.2.2-.3.3-.5.1-.2.1-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.1.2 2.1 3.2 5.1 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.8-.7 2-1.4.2-.7.2-1.3.2-1.4-.1-.2-.3-.3-.6-.4zM12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg>'
+};
+const small = (ic, s=18) => ic.replace('<svg', `<svg width="${s}" height="${s}"`);
+
+/* ---------- Hoja modal ---------- */
+function sheet(html, mount){
+  closeSheet();
+  const ov = document.createElement('div'); ov.className = 'ov'; ov.id = 'ov';
+  ov.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div>`;
+  ov.addEventListener('click', e => { if(e.target === ov) closeSheet(); });
+  document.body.appendChild(ov); mount && mount(ov.querySelector('.sheet')); return ov.querySelector('.sheet');
+}
+function closeSheet(){ const o = $('#ov'); if(o) o.remove(); }
+function confirmSheet(title, text, okLabel, onOk){
+  sheet(`<h3>${esc(title)}</h3><p style="margin:0">${text}</p><div class="grid2"><button class="btn" id="cNo">Cancelar</button><button class="btn pri" id="cOk">${esc(okLabel)}</button></div>`, s => {
+    $('#cNo', s).onclick = closeSheet; $('#cOk', s).onclick = () => { closeSheet(); onOk(); };
+  });
+}
+
+/* ---------- Logo de la marca ---------- */
+const logoSrc = () => cfg.logo === 'default' ? 'img/logo.png' : (cfg.logo || '');
+async function logoBytes(){ const s = logoSrc(); if(!s) return null; const b = await (await fetch(s)).blob(); return {buf:new Uint8Array(await b.arrayBuffer()), ...(await imgSize(s))}; }
+function imgSize(src){ return new Promise(ok => { const i = new Image(); i.onload = () => ok({w:i.naturalWidth, h:i.naturalHeight}); i.onerror = () => ok({w:1, h:1}); i.src = src; }); }
+async function fileToImage(file){ const u = await blobToDataURL(file); return new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = u; }); }
+async function logoFromFile(file){
+  const im = await fileToImage(file); const M = 600; const r = Math.min(1, M/Math.max(im.width, im.height));
+  const c = document.createElement('canvas'); c.width = Math.round(im.width*r); c.height = Math.round(im.height*r);
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0,0,c.width,c.height); x.drawImage(im, 0, 0, c.width, c.height);
+  return c.toDataURL('image/png');
+}
+
+/* ---------- Clientes: niveles y descuentos ---------- */
+function ordersOf(cid){ return orders.filter(o => o.cid === cid); }
+function countOf(cid){ return orders.reduce((a, o) => a + (o.cid === cid ? 1 : 0), 0); }
+function levelOf(n){ return n >= cfg.nivVip ? {k:'vip', t:'VIP'} : n >= cfg.nivFrec ? {k:'frec', t:'Frecuente'} : {k:'nuevo', t:'Nuevo'}; }
+function discountFor(nextN, level){ // nextN = número del pedido que se está registrando
+  const out = [];
+  if(cfg.descOn && Number(cfg.descCada) > 0 && nextN % Number(cfg.descCada) === 0) out.push({pct:Number(cfg.descPct), why:`es su ${nextN}.º pedido`});
+  if(cfg.vipOn && level.k === 'vip') out.push({pct:Number(cfg.vipPct), why:'es cliente VIP'});
+  if(!out.length) return null;
+  const best = out.sort((a, b) => b.pct - a.pct)[0]; return best;
+}
+function fillTpl(tpl, o, extra={}){
+  const c = clients.find(x => x.id === o.cid) || {}; const n = countOf(o.cid); const lv = levelOf(n);
+  return String(tpl).replace(/\{(\w+)\}/g, (m, k) => ({
+    nombre: (o.nombre || c.nombre || '').split(' ')[0] ? titleCase((o.nombre || c.nombre || '').split(' ')[0]) : '',
+    nombrecompleto: titleCase(o.nombre || c.nombre || ''), pedido: o.num ? fmtNum(o.num) : '', ciudad: o.ciudad || c.ciudad || '',
+    marca: cfg.marca, guia: o.guia ? ` N° de guía: *${o.guia}*.` : '', nivel: lv.t, n, descuento: extra.descuento ?? (o.desc || cfg.descPct)
+  })[k] ?? m);
+}
+
+/* ---------- Pegar datos desde WhatsApp ---------- */
+const CIUDADES = ['La Paz','El Alto','Cochabamba','Santa Cruz','Santa Cruz de la Sierra','Oruro','Potosí','Sucre','Tarija','Trinidad','Cobija','Uyuni','Quillacollo','Sacaba','Tiquipaya','Colcapirhua','Vinto','Punata','Cliza','Tarata','Aiquile','Ivirgarzama','Chimoré','Villa Tunari','Shinahota','Entre Ríos','Montero','Warnes','Cotoca','La Guardia','Mineros','Yapacaní','San Julián','Camiri','Puerto Suárez','Puerto Quijarro','San Ignacio de Velasco','San José de Chiquitos','Roboré','Concepción','Ascensión de Guarayos','Vallegrande','Samaipata','Comarapa','Riberalta','Guayaramerín','Rurrenabaque','San Borja','Santa Ana del Yacuma','Yacuiba','Villamontes','Bermejo','Entre Ríos','Padcaya','Villazón','Tupiza','Llallagua','Uncía','Betanzos','Tupiza','Cotagaita','Huanuni','Challapata','Caracollo','Machacamarca','Poopó','Huari','Viacha','Achacachi','Copacabana','Caranavi','Coroico','Patacamaya','Sica Sica','Desaguadero','Chulumani','Guaqui','Laja','Monteagudo','Camargo','Padilla','Tarabuco','Muyupampa','Puerto Villarroel','Pailón','Okinawa','San Matías','Magdalena','Reyes','Santa Rosa','Porvenir','Villa Montes','Yotala','Zudáñez','Sorata'];
+const UNIQ_CIUDADES = [...new Set(CIUDADES)];
+function knownCities(){ const s = new Set(UNIQ_CIUDADES); clients.forEach(c => c.ciudad && s.add(c.ciudad)); return [...s].sort((a, b) => a.localeCompare(b, 'es')); }
+function parseClient(txt){
+  const res = {nombre:'', ciudad:'', ci:'', cel:''}; let t = ' ' + String(txt||'').replace(/\r/g,'\n') + ' ';
+  const take = (re, g=1) => { const m = t.match(re); if(m){ t = t.replace(m[0], ' \n '); return (m[g]||'').trim(); } return ''; };
+  // Datos con etiqueta
+  res.nombre = take(/(?:nombre(?:s)?(?:\s+(?:completo|y\s+apellidos?))?|cliente|destinatario|para)\s*[:=\-]\s*([^\n,;|]+)/i);
+  res.ciudad = take(/(?:ciudad|destino|departamento|env[ií]o\s+a|lugar)\s*[:=\-]\s*([^\n,;|]+)/i);
+  const ciL = take(/(?:c\.?\s?i\.?|carnet(?:\s+de\s+identidad)?|c[eé]dula|ci)\s*(?:n[°ºo.]*)?\s*[:=\-]?\s*(\d{5,10}(?:\s?-?\s?[0-9][A-Z])?(?:\s?(?:LP|CB|SC|OR|PT|CH|TJ|BE|PD|L\.?P\.?|C\.?B\.?|S\.?C\.?|O\.?R\.?|P\.?T\.?))?)\b/i);
+  const celL = take(/(?:cel(?:ular)?|tel(?:[eé]fono|f)?|whats?app|wsp|n[uú]mero|contacto|cell?)\s*(?:n[°ºo.]*)?\s*[:=\-]?\s*((?:\+?\s?591[\s\-]?)?[67](?:[\s\-]?\d){7})/i);
+  res.ci = ciL ? ciL.toUpperCase().replace(/\s+/g,' ') : ''; res.cel = celL ? digits(celL).slice(-8) : '';
+  // Sin etiqueta: celulares y C.I.
+  if(!res.cel){ const m = t.match(/(?:\+?591[\s\-]?)?\b([67](?:[\s\-]?\d){7})\b/); if(m){ res.cel = digits(m[1]); t = t.replace(m[0], ' \n '); } }
+  if(!res.ci){ const m = t.match(/\b(\d{5,10})(\s?-?\s?[0-9][A-Z])?(\s?(?:LP|CB|SC|OR|PT|CH|TJ|BE|PD))?\b/i); if(m){ res.ci = m[0].toUpperCase().trim(); t = t.replace(m[0], ' \n '); } }
+  // Ciudad conocida
+  if(!res.ciudad){
+    const nt = norm(t); let best = null;
+    knownCities().forEach(c => { const nc = norm(c); const re = new RegExp('(^|[^a-z])' + nc.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '([^a-z]|$)'); const m = nt.match(re); if(m && (!best || nc.length > best.n.length)) best = {c, n:nc, i:m.index}; });
+    if(best){ res.ciudad = best.c; const idx = norm(t).indexOf(best.n); if(idx >= 0) t = t.slice(0, idx) + ' \n ' + t.slice(idx + best.n.length); }
+  } else { const k = knownCities().find(c => norm(c) === norm(res.ciudad)); res.ciudad = k || titleCase(res.ciudad); }
+  // Nombre: el primer fragmento con 2+ palabras y sin números
+  if(!res.nombre){
+    const stop = /^(hola|buen[oa]s?|d[ií]as|tardes|noches|quiero|mis|datos|son|env[ií]o|enviar|por|favor|gracias|ci|c\.i\.|cel|celular|nombre|ciudad|a|de|del|la|el|y|mi|para|carnet|soy|me|llamo|es|n[°º]|numero|número)$/i;
+    const parts = t.split(/[\n,;|]+/).map(s => s.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'\-]/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean);
+    for(const p of parts){ const w = p.split(' ').filter(x => x.length > 1 && !stop.test(x)); if(w.length >= 2){ res.nombre = w.join(' '); break; } }
+    if(!res.nombre){ const p = parts.map(p => p.split(' ').filter(x => x.length > 1 && !stop.test(x)).join(' ')).find(Boolean); if(p) res.nombre = p; }
+  }
+  res.nombre = titleCase(res.nombre.replace(/\s+/g,' ').trim());
+  return res;
+}
+
+/* ---------- Activación y códigos ---------- */
+async function pubKey(){ return crypto.subtle.importKey('jwk', ADMIN_PUB, {name:'ECDSA', namedCurve:'P-256'}, false, ['verify']); }
+async function verifyCode(code){
+  code = String(code||'').trim(); const m = code.match(/#c=([^&\s]+)/); if(m) code = m[1]; code = code.replace(/\s+/g,'');
+  const [p, s] = code.split('.'); if(!p || !s) throw new Error('El código no tiene el formato correcto.');
+  let ok = false; try{ ok = await crypto.subtle.verify({name:'ECDSA', hash:'SHA-256'}, await pubKey(), ub64u(s), ub64u(p)); }catch(e){ ok = false; }
+  if(!ok) throw new Error('Código inválido. Pide un código nuevo al administrador.');
+  const [id, name, exp, plan] = dec.decode(ub64u(p)).split('|');
+  if(exp && exp !== '0' && exp < today().replace(/-/g,'')) throw new Error('Tu código venció el ' + fmtExp(exp) + '. Pide la renovación al administrador.');
+  return {role:'user', id, name, exp, plan:plan || '', code};
+}
+const fmtExp = e => e && e !== '0' ? `${e.slice(6)}/${e.slice(4,6)}/${e.slice(0,4)}` : 'sin límite';
+async function importAdminKey(d){ return crypto.subtle.importKey('jwk', {...ADMIN_PUB, d}, {name:'ECDSA', namedCurve:'P-256'}, false, ['sign']); }
+async function verifyMaster(txt){
+  const d = String(txt||'').trim().replace(/^STY-ADMIN-/,'').replace(/\s+/g,''); let ok = false;
+  try{ const sig = await crypto.subtle.sign({name:'ECDSA', hash:'SHA-256'}, await importAdminKey(d), enc.encode('prueba')); ok = await crypto.subtle.verify({name:'ECDSA', hash:'SHA-256'}, await pubKey(), sig, enc.encode('prueba')); }catch(e){ ok = false; }
+  if(!ok) throw new Error('Clave maestra incorrecta.');
+  return {role:'owner', id:'owner', name:'Administrador', key:d};
+}
+async function makeCode(name, exp, plan){
+  const id = uid(6); const payload = `${id}|${String(name).replace(/\|/g,' ').trim()}|${exp ? exp.replace(/-/g,'') : '0'}|${plan}`;
+  const sig = await crypto.subtle.sign({name:'ECDSA', hash:'SHA-256'}, await importAdminKey(lic.key), enc.encode(payload));
+  return {id, code: b64u(enc.encode(payload)) + '.' + b64u(sig)};
+}
+async function checkLicense(){
+  if(!lic) return false;
+  try{ if(lic.role === 'owner') await verifyMaster(lic.key); else { const v = await verifyCode(lic.code); lic.exp = v.exp; } }
+  catch(e){ lockout(e.message); return false; }
+  try{ const r = await fetch('revocados.json', {cache:'no-store'}); if(r.ok){ const j = await r.json(); if((j.ids||[]).includes(lic.id)){ lockout('Tu acceso fue desactivado por el administrador.'); return false; } } }catch(e){}
+  return true;
+}
+let lockMsg = '';
+function lockout(msg){ lockMsg = msg; lic = null; DB.del('kv', 'lic'); LSset('stylus_lic', null); route = 'activar'; render(); }
+async function activate(v){
+  const l = /^STY-ADMIN-/.test(v.trim()) ? await verifyMaster(v) : await verifyCode(v);
+  const first = !(await DB.get('kv', 'cfg'));
+  lic = l; saveLic(); lockMsg = '';
+  if(first && l.role !== 'owner'){ cfg.marca = ''; cfg.lema = ''; cfg.logo = ''; await saveCfg(); }
+  try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+  toast(l.role === 'owner' ? 'Bienvenido, administrador' : `Bienvenido(a), ${l.name}`);
+  route = (l.role !== 'owner' && !cfg.marca) ? 'cfg' : 'nuevo'; render();
+}
+
+/* =========================================================
+   Vistas
+   ========================================================= */
+let route = 'nuevo', ordFilter = 'pend', ordQuery = '', cliQuery = '', cliSort = 'top', resPeriod = 'mes';
+let draft = null; // pedido en edición
+function header(){
+  const q = orders.filter(o => !o.impreso).length;
+  const lg = logoSrc();
+  return `<header class="top"><div class="logo">${lg ? `<img src="${lg}" alt="">` : `<b style="color:#111;font:14px var(--display)">${esc((cfg.marca||'?').slice(0,2))}</b>`}</div>
+  <div class="grow"><div class="t1">${esc(cfg.marca || 'Mi tienda')}</div><div class="t2">${esc(cfg.lema || 'Membretes y pedidos')}</div></div>
+  ${q ? `<button class="cnt" onclick="ordFilter='imp';go('ped')" aria-label="Membretes por imprimir">${q} por imprimir</button>` : ''}</header>`;
+}
+function navHTML(){
+  const t = [['ped','Pedidos',I.box],['cli','Clientes',I.users],['nuevo','Nuevo',I.plus],['res','Resumen',I.chart],['mas','Más',I.more]];
+  return `<div class="in">${t.map(([k, l, ic]) => k === 'nuevo' ? `<button class="plus ${route === k ? 'on' : ''}" data-go="${k}"><div class="ic">${ic}</div><span>${l}</span></button>` : `<button class="${route === k || (k === 'mas' && ['mas','cfg','adm','msg'].includes(route)) ? 'on' : ''}" data-go="${k}">${ic}<span>${l}</span></button>`).join('')}</div>`;
+}
+function render(){
+  const app = $('#app'), tabs = $('#tabs');
+  if(!lic){ tabs.hidden = true; app.innerHTML = route === 'activar' ? vActivar() : vWelcome(); if(route === 'activar') bindActivar(); return; }
+  tabs.hidden = false; tabs.innerHTML = navHTML(); $$('[data-go]', tabs).forEach(b => b.onclick = () => go(b.dataset.go));
+  const V = {nuevo:[vNuevo,bindNuevo], ped:[vPed,bindPed], cli:[vCli,bindCli], res:[vRes,bindRes], mas:[vMas,bindMas], cfg:[vCfg,bindCfg], msg:[vMsg,bindMsg], adm:[vAdm,bindAdm]};
+  const [v, b] = V[route] || V.nuevo; app.innerHTML = header() + `<main>${v()}</main>`; b();
+}
+function go(r){ route = r; render(); window.scrollTo(0,0); }
+
+/* ---------- Bienvenida / activación ---------- */
+function vWelcome(){
+  return `<main style="padding-top:calc(20px + env(safe-area-inset-top,0px))">
+  <section class="hero"><img src="img/logo-white.png" alt="STYLUS"><p>Membretes de envío, clientes frecuentes y guías por WhatsApp, desde tu celular.</p></section>
+  <button class="btn pri big block" onclick="go('activar')">${I.lock} Ingresar con mi código</button>
+  ${installUI()}
+  <p class="hint" style="text-align:center">¿Quieres usar STYLUS en tu negocio? Pide tu código de acceso al administrador.<br>Versión ${APP_VERSION}</p></main>`;
+}
+function vActivar(){
+  return `<main style="padding-top:calc(20px + env(safe-area-inset-top,0px))">
+  <div class="row"><button class="btn sm ghost" onclick="lockMsg='';go('welcome')" aria-label="Volver">${I.left}</button><h2>Acceso</h2></div>
+  ${lockMsg ? `<div class="banner">${esc(lockMsg)} Tus datos siguen guardados en este celular; al ingresar un código nuevo los recuperas.</div>` : ''}
+  <div class="field"><label for="acCode">Código de acceso</label><textarea id="acCode" placeholder="Pega aquí tu código o el enlace que te enviaron" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea></div>
+  <button class="btn pri big block" id="acGo">${I.lock} Ingresar</button>
+  <p class="hint" id="acErr" style="color:var(--bad);font-weight:700;margin:0"></p>
+  <p class="hint">El administrador ingresa con su clave maestra (empieza con STY-ADMIN-).</p></main>`;
+}
+function bindActivar(){
+  $('#acGo').onclick = async () => { const v = $('#acCode').value.trim(); $('#acErr').textContent = ''; if(!v){ $('#acErr').textContent = 'Escribe o pega tu código.'; return; }
+    try{ await activate(v); }catch(e){ $('#acErr').textContent = e.message || 'Código inválido.'; } };
+}
+
+/* ---------- NUEVO PEDIDO ---------- */
+function newDraft(c){ return {id:null, cid:c ? c.id : null, nombre:c ? c.nombre : '', ciudad:c ? c.ciudad : '', ci:c ? c.ci : '', cel:c ? c.cel : '', num:cfg.nextNum, nota:''}; }
+function vNuevo(){
+  if(!draft) draft = newDraft();
+  const c = draft.cid ? clients.find(x => x.id === draft.cid) : null; const n = c ? countOf(c.id) : 0; const lv = levelOf(n);
+  const nextN = draft.id ? null : n + 1; const disc = nextN ? discountFor(nextN, lv) : null;
+  const IC = n => `<img src="img/${n}.png" alt="">`;
+  return `<div class="row between"><h2>${draft.id ? 'Editar pedido' : 'Nuevo pedido'}</h2><span class="pill imp num" style="font-size:14px">${fmtNum(draft.num)}</span></div>
+  <button class="btn gold block" id="pasteBtn">${I.paste} Pegar datos desde WhatsApp</button>
+  ${c ? `<div class="card soft row" style="gap:12px"><div class="badge k num">${n}</div><div style="flex:1;min-width:0"><b>${esc(c.nombre)}</b><div class="row" style="gap:6px;margin-top:3px"><span class="pill ${lv.k}">${lv.t}</span><span class="hint">${n} pedido${n === 1 ? '' : 's'} anteriores</span></div></div><button class="btn sm ghost" id="unlink">Otro</button></div>` : ''}
+  ${disc ? `<div class="banner">${small(I.gift)} <b>¡Le toca ${disc.pct}% de descuento!</b> Porque ${esc(disc.why)}. Se incluirá en el mensaje de WhatsApp.</div>` : ''}
+  <div class="field"><label for="fN">${IC('i_user')} Nombre</label><input id="fN" value="${esc(draft.nombre)}" autocomplete="off" placeholder="Escribe las primeras letras…"><div class="sugg" id="sgN" hidden></div></div>
+  <div class="field"><label for="fC">${IC('i_pin')} Ciudad</label><input id="fC" value="${esc(draft.ciudad)}" autocomplete="off" list="dlC" placeholder="Ej.: Cochabamba"><datalist id="dlC">${knownCities().map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>
+  <div class="grid2"><div class="field"><label for="fI">${IC('i_id')} C.I.</label><input id="fI" value="${esc(draft.ci)}" autocomplete="off" inputmode="text"><div class="sugg" id="sgI" hidden></div></div>
+  <div class="field"><label for="fT">${IC('i_tel')} Celular</label><input id="fT" value="${esc(draft.cel)}" autocomplete="off" inputmode="tel"><div class="sugg" id="sgT" hidden></div></div></div>
+  <details><summary class="hint" style="cursor:pointer;font-weight:700">Más opciones (N° de pedido y nota)</summary>
+  <div class="grid2" style="margin-top:10px"><div class="field"><label for="fNum">N° de pedido</label><input id="fNum" type="number" min="1" value="${draft.num}"></div><div class="field"><label for="fNo">Nota (no se imprime)</label><input id="fNo" value="${esc(draft.nota)}" placeholder="Ej.: 3 poleras"></div></div></details>
+  <button class="btn pri big block" id="save">${I.check} ${draft.id ? 'Guardar cambios' : 'Guardar pedido'}</button>
+  ${draft.id ? `<button class="btn block" id="cancelEd">Cancelar edición</button>` : ''}
+  ${lastOrdersHint()}`;
+}
+function lastOrdersHint(){
+  const q = orders.filter(o => !o.impreso);
+  if(!q.length) return `<p class="hint" style="text-align:center;margin:0">Cada pedido llena un membrete. Se imprimen ${PER_SHEET} por hoja carta.</p>`;
+  const sheets = Math.ceil(q.length / PER_SHEET), free = sheets * PER_SHEET - q.length;
+  return `<div class="card soft row between"><div><b class="num">${q.length} membrete${q.length === 1 ? '' : 's'} listo${q.length === 1 ? '' : 's'}</b><div class="hint">${sheets} hoja${sheets === 1 ? '' : 's'}${free ? ` · quedan ${free} espacio${free === 1 ? '' : 's'} libre${free === 1 ? '' : 's'}` : ' completa' + (sheets === 1 ? '' : 's')}</div></div><button class="btn sm pri" onclick="ordFilter='imp';go('ped')">${small(I.doc)} Imprimir</button></div>`;
+}
+function suggest(inp, box, fieldFn){
+  const q = norm(inp.value); const qd = digits(inp.value);
+  if(q.length < 2 && qd.length < 3){ box.hidden = true; return; }
+  const list = clients.map(c => ({c, n:countOf(c.id)})).filter(({c}) => fieldFn(c, q, qd)).sort((a, b) => b.n - a.n).slice(0, 6);
+  if(!list.length){ box.hidden = true; return; }
+  box.innerHTML = list.map(({c, n}) => `<button type="button" data-c="${c.id}"><div class="badge k num">${n}</div><div style="min-width:0"><b>${esc(c.nombre)}</b><small>${esc([c.ciudad, c.ci && 'C.I. ' + c.ci, c.cel].filter(Boolean).join(' · '))}</small></div></button>`).join('');
+  box.hidden = false;
+  $$('button', box).forEach(b => b.onmousedown = b.ontouchstart = e => { e.preventDefault(); pickClient(b.dataset.c); });
+}
+function pickClient(cid){ const c = clients.find(x => x.id === cid); if(!c) return; draft = Object.assign(draft, {cid:c.id, nombre:c.nombre, ciudad:c.ciudad, ci:c.ci, cel:c.cel}); render(); }
+function readDraft(){ draft.nombre = $('#fN').value.trim(); draft.ciudad = $('#fC').value.trim(); draft.ci = $('#fI').value.trim(); draft.cel = $('#fT').value.trim(); const nn = $('#fNum'); if(nn) draft.num = Math.max(1, parseInt(nn.value) || draft.num); const nt = $('#fNo'); if(nt) draft.nota = nt.value.trim(); }
+function bindNuevo(){
+  const fN = $('#fN'), fI = $('#fI'), fT = $('#fT');
+  fN.oninput = () => { draft.nombre = fN.value; suggest(fN, $('#sgN'), (c, q) => norm(c.nombre).split(' ').some(w => w.startsWith(q)) || norm(c.nombre).startsWith(q) || norm(c.nombre).includes(q)); };
+  fI.oninput = () => { draft.ci = fI.value; suggest(fI, $('#sgI'), (c, q, qd) => qd.length >= 3 && digits(c.ci).startsWith(qd)); };
+  fT.oninput = () => { draft.cel = fT.value; suggest(fT, $('#sgT'), (c, q, qd) => qd.length >= 3 && digits(c.cel).includes(qd)); };
+  [fN, fI, fT].forEach(i => i.onblur = () => setTimeout(() => $$('.sugg').forEach(s => s.hidden = true), 150));
+  $('#fC').oninput = e => draft.ciudad = e.target.value;
+  const un = $('#unlink'); if(un) un.onclick = () => { draft = newDraft(); render(); setTimeout(() => $('#fN').focus(), 50); };
+  $('#pasteBtn').onclick = pasteSheet;
+  $('#save').onclick = saveDraft;
+  const ce = $('#cancelEd'); if(ce) ce.onclick = () => { draft = null; go('ped'); };
+}
+function pasteSheet(){
+  sheet(`<h3>Pegar datos del cliente</h3><p class="hint" style="margin:0">En WhatsApp, mantén presionado el mensaje del cliente → <b>Copiar</b>. Luego pégalo aquí.</p>
+  <div class="field"><textarea id="pT" style="min-height:130px" placeholder="Ej.: Juan Pérez Mamani, CI 1234567, cel 71234567, Cochabamba"></textarea></div>
+  <div class="grid2"><button class="btn" id="pPaste">${I.paste} Pegar</button><button class="btn pri" id="pGo">Reconocer datos</button></div>`, s => {
+    const ta = $('#pT', s);
+    $('#pPaste', s).onclick = async () => { try{ ta.value = await navigator.clipboard.readText(); if(ta.value) $('#pGo', s).click(); }catch(e){ ta.focus(); toast('Mantén presionado el recuadro y elige Pegar'); } };
+    $('#pGo', s).onclick = () => {
+      const r = parseClient(ta.value); if(!r.nombre && !r.ci && !r.cel && !r.ciudad){ toast('No encontré datos. Revisa el texto.'); return; }
+      let c = null; if(r.ci) c = clients.find(x => digits(x.ci) && digits(x.ci) === digits(r.ci)); if(!c && r.cel) c = clients.find(x => digits(x.cel) === digits(r.cel));
+      if(c){ draft = Object.assign(draft, {cid:c.id, nombre:r.nombre || c.nombre, ciudad:r.ciudad || c.ciudad, ci:r.ci || c.ci, cel:r.cel || c.cel}); toast('Cliente frecuente reconocido: ' + c.nombre); }
+      else { draft = Object.assign(draft, {cid:null, nombre:r.nombre, ciudad:r.ciudad, ci:r.ci, cel:r.cel}); toast('Datos reconocidos. Revísalos antes de guardar.'); }
+      closeSheet(); render();
+    };
+    setTimeout(() => ta.focus(), 120);
+  });
+}
+async function saveDraft(){
+  readDraft();
+  if(!draft.nombre){ toast('Escribe el nombre del cliente'); $('#fN').focus(); return; }
+  if(!draft.ciudad){ toast('Escribe la ciudad de destino'); $('#fC').focus(); return; }
+  if(draft.cel && !validPhone(draft.cel)) toast('Revisa el celular: deben ser 8 dígitos');
+  const nombre = titleCase(draft.nombre), ciudad = knownCities().find(c => norm(c) === norm(draft.ciudad)) || titleCase(draft.ciudad);
+  // cliente: buscar por id, C.I., celular o nombre exacto
+  let c = draft.cid ? clients.find(x => x.id === draft.cid) : null;
+  if(!c && digits(draft.ci)) c = clients.find(x => digits(x.ci) === digits(draft.ci));
+  if(!c && validPhone(draft.cel)) c = clients.find(x => digits(x.cel).slice(-8) === digits(draft.cel).slice(-8));
+  if(!c) c = clients.find(x => norm(x.nombre) === norm(nombre));
+  if(!c){ c = {id:uid(), nombre, ciudad, ci:draft.ci, cel:digits(draft.cel).slice(-8), alta:new Date().toISOString()}; clients.push(c); }
+  else Object.assign(c, {nombre, ciudad, ci:draft.ci || c.ci, cel:digits(draft.cel).slice(-8) || c.cel});
+  if(draft.id){
+    const o = orders.find(x => x.id === draft.id); Object.assign(o, {cid:c.id, nombre, ciudad, ci:draft.ci, cel:digits(draft.cel).slice(-8), num:draft.num, nota:draft.nota});
+    await saveClients(); await saveOrders(); draft = null; toast('Pedido actualizado'); go('ped'); return;
+  }
+  const prevN = countOf(c.id); const disc = discountFor(prevN + 1, levelOf(prevN));
+  const o = {id:uid(), num:draft.num, cid:c.id, nombre, ciudad, ci:draft.ci, cel:digits(draft.cel).slice(-8), fecha:new Date().toISOString(), estado:'pend', impreso:false, guia:'', img:false, desc:disc ? disc.pct : 0, nota:draft.nota};
+  orders.push(o); cfg.nextNum = Math.max(cfg.nextNum, draft.num + 1);
+  await saveClients(); await saveOrders(); await saveCfg();
+  draft = null; render();
+  afterSave(o, disc, prevN + 1);
+}
+function afterSave(o, disc, n){
+  const q = orders.filter(x => !x.impreso).length;
+  sheet(`<div style="text-align:center" class="stack"><div style="font:44px var(--display)">${small(I.check, 44)}</div><h2>Pedido guardado</h2><p class="sub" style="margin:0"><b>${fmtNum(o.num)}</b> · ${esc(o.nombre)} · ${esc(o.ciudad)}</p>
+  <p class="hint" style="margin:0">Membrete ${((q - 1) % PER_SHEET) + 1} de ${PER_SHEET} en la hoja ${Math.ceil(q / PER_SHEET)}.</p></div>
+  ${disc ? `<div class="banner">${small(I.gift)} Pedido ${n}.º: ${disc.pct}% de descuento (${esc(disc.why)}).</div>` : ''}
+  <button class="btn wa block" id="aWA">${I.wa} Avisar al cliente: pedido recibido</button>
+  <div class="grid2"><button class="btn" id="aNew">${I.plus} Otro pedido</button><button class="btn pri" id="aPrint">${I.doc} Membretes</button></div>`, s => {
+    $('#aWA', s).onclick = () => { let m = fillTpl(cfg.msgRec, o); if(disc) m += '\n\n' + fillTpl(cfg.msgDesc, o, {descuento:disc.pct}).replace('{n}', n); sendTo(o, m); };
+    $('#aNew', s).onclick = () => { closeSheet(); go('nuevo'); setTimeout(() => $('#fN') && $('#fN').focus(), 80); };
+    $('#aPrint', s).onclick = () => { closeSheet(); ordFilter = 'imp'; go('ped'); };
+  });
+}
+function sendTo(o, msg){
+  const cel = o.cel || (clients.find(c => c.id === o.cid) || {}).cel;
+  if(!validPhone(cel)){ toast('Este cliente no tiene celular válido: elige el contacto en WhatsApp'); }
+  openWA(validPhone(cel) ? cel : '', msg);
+}
+
+/* ---------- PEDIDOS ---------- */
+const EST = {pend:['Por enviar','pend'], env:['Enviado','env'], ent:['Entregado','ent']};
+function vPed(){
+  const q = orders.filter(o => !o.impreso);
+  const f = {imp:o => !o.impreso, pend:o => o.estado === 'pend', env:o => o.estado === 'env', ent:o => o.estado === 'ent', all:() => true}[ordFilter] || (() => true);
+  const qq = norm(ordQuery);
+  const list = orders.filter(f).filter(o => !qq || norm(o.nombre).includes(qq) || norm(o.ciudad).includes(qq) || String(o.num).includes(qq) || digits(o.ci).includes(qq)).sort((a, b) => b.num - a.num);
+  const sheets = Math.ceil(q.length / PER_SHEET);
+  return `<h2>Pedidos</h2>
+  <div class="card dark stack"><div class="row between"><div><b style="font:22px var(--display)" class="num">${q.length}</b> <span>membrete${q.length === 1 ? '' : 's'} por imprimir</span><div style="opacity:.7;font-size:13px">${q.length ? `${sheets} hoja${sheets === 1 ? '' : 's'} carta · ${PER_SHEET} por hoja` : 'Todo impreso'}</div></div></div>
+  <div class="grid2"><button class="btn gold" id="mkDoc" ${q.length ? '' : 'disabled'}>${I.doc} Word</button><button class="btn" id="mkPdf" style="background:#fff" ${q.length ? '' : 'disabled'}>${I.print} PDF / Imprimir</button></div>
+  <button class="btn sm" id="mkPrev" style="background:transparent;color:#fff;border-color:#444" ${q.length ? '' : 'disabled'}>Ver vista previa</button></div>
+  <div class="search field"><span>${I.search}</span><input id="oq" placeholder="Buscar por nombre, ciudad o N°" value="${esc(ordQuery)}" autocomplete="off"></div>
+  <div class="chips">${[['imp','Por imprimir'],['pend','Por enviar'],['env','Enviados'],['ent','Entregados'],['all','Todos']].map(([k, l]) => `<button class="chip ${ordFilter === k ? 'on' : ''}" data-f="${k}">${l} <span class="num">(${orders.filter({imp:o => !o.impreso, pend:o => o.estado === 'pend', env:o => o.estado === 'env', ent:o => o.estado === 'ent', all:() => true}[k]).length})</span></button>`).join('')}</div>
+  ${list.length ? `<div class="list">${list.map(o => `<div class="item" data-o="${o.id}"><div class="badge num">${pad(o.num, 4).slice(-4)}</div><div class="nm"><b>${esc(o.nombre)}</b><small>${esc(o.ciudad)} · ${fCorta(o.fecha)}</small><div class="row" style="gap:5px;margin-top:3px"><span class="pill ${EST[o.estado][1]}">${EST[o.estado][0]}</span>${o.impreso ? '' : '<span class="pill imp">Por imprimir</span>'}${o.img ? '<span class="pill imp">Guía</span>' : ''}</div></div>${small(I.right)}</div>`).join('')}</div>`
+  : `<div class="card soft empty"><b>${orders.length ? 'Nada en este filtro' : 'Aún no hay pedidos'}</b>${orders.length ? '' : 'Toca <b>Nuevo</b> abajo para registrar el primero.'}</div>`}`;
+}
+function bindPed(){
+  $$('[data-f]').forEach(b => b.onclick = () => { ordFilter = b.dataset.f; render(); });
+  const oq = $('#oq'); oq.oninput = () => { ordQuery = oq.value; const p = oq.selectionStart; render(); const n = $('#oq'); n.focus(); n.setSelectionRange(p, p); };
+  $$('[data-o]').forEach(el => el.onclick = () => orderSheet(el.dataset.o));
+  const q = () => orders.filter(o => !o.impreso).sort((a, b) => a.num - b.num);
+  $('#mkDoc').onclick = () => makeWord(q());
+  $('#mkPdf').onclick = () => printLabels(q());
+  $('#mkPrev').onclick = () => previewSheet(q());
+}
+function orderSheet(id){
+  const o = orders.find(x => x.id === id); if(!o) return; const c = clients.find(x => x.id === o.cid); const n = c ? countOf(c.id) : 0; const lv = levelOf(n);
+  sheet(`<div class="row between"><h3>${fmtNum(o.num)}</h3><span class="pill ${EST[o.estado][1]}">${EST[o.estado][0]}</span></div>
+  <div class="card soft stack" style="gap:4px"><b style="font-size:18px">${esc(o.nombre)}</b><span>${esc(o.ciudad)}</span><span class="hint">${o.ci ? 'C.I. ' + esc(o.ci) + ' · ' : ''}${o.cel ? 'Cel. ' + esc(o.cel) : 'sin celular'}</span><span class="hint">Registrado: ${fHora(o.fecha)}${o.nota ? ' · ' + esc(o.nota) : ''}</span>
+  <div class="row" style="gap:6px"><span class="pill ${lv.k}">${lv.t}</span><span class="hint">${n} pedidos en total</span>${o.desc ? `<span class="pill vip">${o.desc}% desc.</span>` : ''}</div></div>
+  <div id="gImg"></div>
+  ${o.estado === 'pend' ? `<button class="btn pri big block" id="oScan">${I.cam} Registrar envío (foto de la guía)</button>` : ''}
+  ${o.estado !== 'pend' ? `<button class="btn wa block" id="oSendG">${I.wa} ${o.img ? 'Enviar guía al cliente' : 'Avisar envío al cliente'}</button>` : ''}
+  ${o.estado === 'env' ? `<button class="btn block" id="oEnt">${I.check} Marcar como entregado</button>` : ''}
+  ${o.estado === 'ent' ? `<button class="btn block" id="oThx">${I.wa} Enviar agradecimiento</button>` : ''}
+  ${o.estado !== 'pend' ? `<button class="btn sm ghost" id="oScan2">${I.cam} ${o.img ? 'Cambiar foto de la guía' : 'Agregar foto de la guía'}</button>` : ''}
+  <div class="grid2"><button class="btn sm" id="oEdit">Editar datos</button><button class="btn sm" id="oRe">${o.impreso ? 'Volver a imprimir' : 'Quitar de impresión'}</button></div>
+  <div class="grid2"><button class="btn sm" id="oWR">${I.wa} Pedido recibido</button><button class="btn sm ghost" id="oDel" style="color:var(--bad)">Eliminar</button></div>`, async s => {
+    if(o.img){ const b = await DB.get('img', o.id); if(b){ const u = URL.createObjectURL(b); $('#gImg', s).innerHTML = `<img class="guiaimg" src="${u}" alt="Guía de envío">${o.guia ? `<p class="hint" style="margin:4px 0 0">N° de guía: <b>${esc(o.guia)}</b></p>` : ''}`; } }
+    const sc = $('#oScan', s) || null; if(sc) sc.onclick = () => scanGuide(o);
+    const sc2 = $('#oScan2', s); if(sc2) sc2.onclick = () => scanGuide(o);
+    const sg = $('#oSendG', s); if(sg) sg.onclick = () => sendGuide(o);
+    const en = $('#oEnt', s); if(en) en.onclick = async () => { o.estado = 'ent'; o.fEnt = new Date().toISOString(); await saveOrders(); render(); orderSheet(o.id); toast('Marcado como entregado'); };
+    const th = $('#oThx', s); if(th) th.onclick = () => sendTo(o, fillTpl(cfg.msgEnt, o));
+    $('#oWR', s).onclick = () => sendTo(o, fillTpl(cfg.msgRec, o));
+    $('#oEdit', s).onclick = () => { closeSheet(); draft = {id:o.id, cid:o.cid, nombre:o.nombre, ciudad:o.ciudad, ci:o.ci, cel:o.cel, num:o.num, nota:o.nota || ''}; go('nuevo'); };
+    $('#oRe', s).onclick = async () => { o.impreso = !o.impreso; await saveOrders(); closeSheet(); render(); toast(o.impreso ? 'Quitado de la lista de impresión' : 'Agregado a la lista de impresión'); };
+    $('#oDel', s).onclick = () => confirmSheet('Eliminar pedido', `¿Eliminar el pedido <b>${fmtNum(o.num)}</b> de ${esc(o.nombre)}? También se quita de su historial.`, 'Eliminar', async () => { orders = orders.filter(x => x.id !== o.id); await DB.del('img', o.id); await saveOrders(); render(); toast('Pedido eliminado'); });
+  });
+}
+
+/* ---------- Guía de envío: foto, recorte y mejora ---------- */
+function scanGuide(o){
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.setAttribute('capture', 'environment');
+  sheet(`<h3>Foto de la guía</h3><p class="hint" style="margin:0">Toma la foto sobre una superficie oscura y con buena luz. Luego podrás recortarla.</p>
+  <button class="btn pri big block" id="gCam">${I.cam} Tomar foto</button><button class="btn block" id="gGal">Elegir de la galería</button>`, s => {
+    $('#gCam', s).onclick = () => { inp.setAttribute('capture', 'environment'); inp.click(); };
+    $('#gGal', s).onclick = () => { inp.removeAttribute('capture'); inp.click(); };
+  });
+  inp.onchange = async () => { const f = inp.files[0]; if(!f) return; try{ const im = await fileToImage(f); cropSheet(o, im); }catch(e){ toast('No se pudo leer la foto'); } };
+}
+function cropSheet(o, im){
+  // escalar a máx 1800 px
+  const M = 1800; let r = Math.min(1, M / Math.max(im.width, im.height));
+  let src = document.createElement('canvas'); src.width = Math.round(im.width*r); src.height = Math.round(im.height*r); src.getContext('2d').drawImage(im, 0, 0, src.width, src.height);
+  let box = {x:.04, y:.04, w:.92, h:.92}, docMode = true;
+  sheet(`<h3>Recortar y mejorar</h3><p class="hint" style="margin:0">Arrastra las esquinas amarillas para dejar solo la guía.</p>
+  <div class="cropbox" id="cb"><canvas id="cv"></canvas><div class="crop" id="cr"><i data-h="tl"></i><i data-h="tr"></i><i data-h="bl"></i><i data-h="br"></i></div></div>
+  <div class="row"><button class="btn sm" id="cRot">${I.rot} Girar</button><label class="btn sm" style="gap:8px"><input type="checkbox" id="cDoc" checked style="width:18px;height:18px;accent-color:#111"> Modo escáner</label></div>
+  <div class="field"><label for="cGuia">N° de guía (opcional)</label><input id="cGuia" value="${esc(o.guia || '')}" inputmode="text"></div>
+  <button class="btn pri big block" id="cOk">${I.check} Guardar y marcar enviado</button>`, s => {
+    const cv = $('#cv', s), cr = $('#cr', s), cb = $('#cb', s);
+    const draw = () => { cv.width = src.width; cv.height = src.height; cv.getContext('2d').drawImage(src, 0, 0); place(); };
+    const place = () => { cr.style.left = box.x*100 + '%'; cr.style.top = box.y*100 + '%'; cr.style.width = box.w*100 + '%'; cr.style.height = box.h*100 + '%'; };
+    draw();
+    let drag = null;
+    cr.addEventListener('pointerdown', e => { const h = e.target.dataset.h; const rc = cb.getBoundingClientRect(); drag = {h:h || 'move', sx:e.clientX, sy:e.clientY, b:{...box}, W:rc.width, H:rc.height}; cr.setPointerCapture(e.pointerId); e.preventDefault(); });
+    cr.addEventListener('pointermove', e => { if(!drag) return; const dx = (e.clientX - drag.sx)/drag.W, dy = (e.clientY - drag.sy)/drag.H; const b = {...drag.b}; const m = .06;
+      if(drag.h === 'move'){ b.x = Math.min(Math.max(0, b.x + dx), 1 - b.w); b.y = Math.min(Math.max(0, b.y + dy), 1 - b.h); }
+      else { if(drag.h.includes('l')){ const nx = Math.min(Math.max(0, b.x + dx), b.x + b.w - m); b.w += b.x - nx; b.x = nx; } if(drag.h.includes('r')) b.w = Math.min(Math.max(m, b.w + dx), 1 - b.x);
+        if(drag.h.includes('t')){ const ny = Math.min(Math.max(0, b.y + dy), b.y + b.h - m); b.h += b.y - ny; b.y = ny; } if(drag.h.includes('b')) b.h = Math.min(Math.max(m, b.h + dy), 1 - b.y); }
+      box = b; place(); });
+    cr.addEventListener('pointerup', () => drag = null); cr.addEventListener('pointercancel', () => drag = null);
+    $('#cRot', s).onclick = () => { const c = document.createElement('canvas'); c.width = src.height; c.height = src.width; const x = c.getContext('2d'); x.translate(c.width, 0); x.rotate(Math.PI/2); x.drawImage(src, 0, 0); src = c; box = {x:box.y ? 1 - box.y - box.h : 0, y:box.x, w:box.h, h:box.w}; draw(); };
+    $('#cDoc', s).onchange = e => docMode = e.target.checked;
+    $('#cOk', s).onclick = async () => {
+      const sx = Math.round(box.x*src.width), sy = Math.round(box.y*src.height), sw = Math.round(box.w*src.width), sh = Math.round(box.h*src.height);
+      const out = document.createElement('canvas'); out.width = sw; out.height = sh; const x = out.getContext('2d'); x.drawImage(src, sx, sy, sw, sh, 0, 0, sw, sh);
+      if(docMode) enhanceDoc(out);
+      const blob = await new Promise(ok => out.toBlob(ok, 'image/jpeg', .85));
+      await DB.set('img', o.id, blob); o.img = true; o.guia = $('#cGuia', s).value.trim(); if(o.estado === 'pend'){ o.estado = 'env'; o.fEnv = new Date().toISOString(); }
+      await saveOrders(); render(); toast('Guía guardada · pedido enviado'); orderSheet(o.id);
+    };
+  });
+}
+function enhanceDoc(c){
+  const x = c.getContext('2d'); const d = x.getImageData(0, 0, c.width, c.height); const p = d.data; const hist = new Uint32Array(256); const n = p.length / 4;
+  const L = new Uint8ClampedArray(n);
+  for(let i=0, j=0; i<p.length; i+=4, j++){ const l = (p[i]*.299 + p[i+1]*.587 + p[i+2]*.114) | 0; L[j] = l; hist[l]++; }
+  let acc = 0, lo = 0, hi = 255; for(let v=0; v<256; v++){ acc += hist[v]; if(acc > n*.02){ lo = v; break; } } acc = 0; for(let v=255; v>=0; v--){ acc += hist[v]; if(acc > n*.25){ hi = v; break; } }
+  if(hi - lo < 40){ hi = Math.min(255, lo + 40); }
+  for(let i=0, j=0; i<p.length; i+=4, j++){
+    const k = Math.max(0, Math.min(255, (L[j] - lo) * 255 / (hi - lo)));
+    // conserva un poco de color (sellos) pero aclara el fondo
+    const sat = Math.max(p[i], p[i+1], p[i+2]) - Math.min(p[i], p[i+1], p[i+2]);
+    if(sat > 60 && k < 230){ const f = k / Math.max(1, L[j]); p[i] = Math.min(255, p[i]*f); p[i+1] = Math.min(255, p[i+1]*f); p[i+2] = Math.min(255, p[i+2]*f); }
+    else { p[i] = p[i+1] = p[i+2] = k; }
+  }
+  x.putImageData(d, 0, 0);
+}
+async function sendGuide(o){
+  const msg = fillTpl(cfg.msgEnv, o); const blob = o.img ? await DB.get('img', o.id) : null;
+  if(!blob){ sendTo(o, msg); return; }
+  const file = new File([blob], `Guia_${fmtNum(o.num).replace(/\W+/g,'')}_${o.nombre.split(' ')[0]}.jpg`, {type:'image/jpeg'});
+  const cel = o.cel;
+  sheet(`<h3>Enviar guía a ${esc(o.nombre.split(' ')[0])}</h3>
+  <p class="hint" style="margin:0"><b>1.</b> Toca <b>Compartir foto</b> y elige WhatsApp → busca a <b>${esc(o.nombre)}</b>${validPhone(cel) ? ` (${esc(cel)})` : ''}. El mensaje ya va copiado: si no aparece debajo de la foto, mantén presionado y elige <b>Pegar</b>.</p>
+  <button class="btn wa big block" id="sgShare">${I.wa} Compartir foto + mensaje</button>
+  <p class="hint" style="margin:0"><b>2.</b> ¿Prefieres abrir directo su chat? Envía el mensaje y luego adjunta la foto desde la galería.</p>
+  <div class="grid2"><button class="btn" id="sgChat" ${validPhone(cel) ? '' : 'disabled'}>Abrir su chat</button><button class="btn" id="sgSave">${I.dl} Guardar foto</button></div>`, s => {
+    $('#sgShare', s).onclick = async () => { await copyText(msg, 'Mensaje copiado'); if(navigator.canShare && navigator.canShare({files:[file]})){ try{ await navigator.share({files:[file], text:msg}); }catch(e){} } else { downloadBlob(blob, file.name); sendTo(o, msg); } };
+    $('#sgChat', s).onclick = () => sendTo(o, msg);
+    $('#sgSave', s).onclick = () => downloadBlob(blob, file.name);
+  });
+}
+
+/* ---------- Membretes: Word y PDF ---------- */
+function labelHTML(o){
+  const lg = logoSrc();
+  const f = (ic, v) => `<div class="f"><img src="img/${ic}.png" alt=""><div>${esc(v || '')}</div></div>`;
+  return `<div class="lbl"><div class="lg">${lg ? `<img src="${lg}" alt="">` : `<div class="txt">${esc(cfg.marca || '')}</div>`}</div><div class="fs"><div class="no">${o ? fmtNum(o.num) : ''}</div>${f('i_user', o && o.nombre)}${f('i_pin', o && o.ciudad)}${f('i_id', o && o.ci)}${f('i_tel', o && o.cel)}</div></div>`;
+}
+function sheetsHTML(list){ const pages = []; for(let i=0; i<Math.max(1, list.length); i+=PER_SHEET) pages.push(list.slice(i, i+PER_SHEET)); return pages.map(p => `<div class="sheetP">${Array.from({length:PER_SHEET}, (_, k) => labelHTML(p[k])).join('')}</div>`).join(''); }
+function previewSheet(list){
+  sheet(`<div class="row between"><h3>Vista previa</h3><span class="hint">${Math.ceil(list.length / PER_SHEET)} hoja(s)</span></div><div id="pv" class="stack"></div>
+  <div class="grid2"><button class="btn gold" id="pvW">${I.doc} Word</button><button class="btn pri" id="pvP">${I.print} PDF</button></div>`, s => {
+    const pv = $('#pv', s); pv.innerHTML = sheetsHTML(list);
+    // envolver cada hoja y escalar
+    const sheetsEl = $$('.sheetP', pv); pv.innerHTML = ''; sheetsEl.forEach(sp => { const w = document.createElement('div'); w.className = 'lblwrap'; w.appendChild(sp); pv.appendChild(w); });
+    requestAnimationFrame(() => { $$('.lblwrap', pv).forEach(w => { const sp = w.firstChild; const sc = w.clientWidth / sp.offsetWidth; sp.style.transform = `scale(${sc})`; w.style.height = sp.offsetHeight * sc + 'px'; }); });
+    $('#pvW', s).onclick = () => makeWord(list); $('#pvP', s).onclick = () => printLabels(list);
+  });
+}
+function askMarkPrinted(list){
+  sheet(`<h3>¿Se imprimieron bien?</h3><p style="margin:0">Si ya imprimiste estos <b>${list.length}</b> membretes, márcalos como impresos para que la próxima hoja empiece vacía.</p>
+  <div class="grid2"><button class="btn" onclick="closeSheet()">Todavía no</button><button class="btn pri" id="mpOk">Marcar impresos</button></div>`, s => {
+    $('#mpOk', s).onclick = async () => { list.forEach(o => { const x = orders.find(y => y.id === o.id); if(x) x.impreso = true; }); await saveOrders(); closeSheet(); render(); toast('Listo, membretes marcados como impresos'); };
+  });
+}
+function printLabels(list){
+  closeSheet();
+  const p = $('#print'); p.innerHTML = sheetsHTML(list);
+  const imgs = $$('img', p); Promise.all(imgs.map(i => i.complete ? 1 : new Promise(r => { i.onload = i.onerror = r; }))).then(() => {
+    setTimeout(() => { window.print(); setTimeout(() => askMarkPrinted(list), 600); }, 150);
+  });
+}
+async function fetchBytes(u){ const r = await fetch(u); return new Uint8Array(await r.arrayBuffer()); }
+async function makeWord(list){
+  closeSheet(); toast('Creando archivo Word…');
+  try{ await loadScript('vendor/docx.umd.js'); }catch(e){ toast('Necesitas internet la primera vez para crear el Word'); return; }
+  const D = window.docx;
+  const [lg, ...ics] = await Promise.all([logoBytes(), ...['i_user','i_pin','i_id','i_tel'].map(n => fetchBytes(`img/${n}.png`))]);
+  const icSz = await Promise.all(['i_user','i_pin','i_id','i_tel'].map(n => imgSize(`img/${n}.png`)));
+  const DXA = D.WidthType.DXA, NONE = {style:D.BorderStyle.NONE, size:0, color:'FFFFFF'};
+  const noB = {top:NONE, bottom:NONE, left:NONE, right:NONE, insideHorizontal:NONE, insideVertical:NONE};
+  const cellNoB = {top:NONE, bottom:NONE, left:NONE, right:NONE};
+  const thick = {style:D.BorderStyle.SINGLE, size:14, color:'000000'};
+  const COLW = 5760, ROWH = 3700, LOGOW = 1980, ICW = 430, TXW = 3150; // 1440 = 1 pulgada
+  const tiny = () => new D.Paragraph({spacing:{before:0, after:0, line:20, lineRule:D.LineRuleType ? D.LineRuleType.EXACT : undefined}, children:[new D.TextRun({text:'', size:2})]});
+  function logoPara(){
+    if(lg){ const maxW = 122, maxH = 118; const r = Math.min(maxW / lg.w, maxH / lg.h); return new D.Paragraph({alignment:D.AlignmentType.CENTER, children:[new D.ImageRun({data:lg.buf, transformation:{width:Math.round(lg.w*r), height:Math.round(lg.h*r)}})]}); }
+    return new D.Paragraph({alignment:D.AlignmentType.CENTER, children:[new D.TextRun({text:cfg.marca || '', bold:true, size:30, font:'Arial Black'})]});
+  }
+  function label(o){
+    const vals = o ? [o.nombre, o.ciudad, o.ci, o.cel] : ['', '', '', ''];
+    const rows = [];
+    vals.forEach((v, i) => {
+      const s = icSz[i]; const h = 17, w = Math.round(h * s.w / s.h);
+      rows.push(new D.TableRow({height:{value:780, rule:D.HeightRule.EXACT}, children:[
+        new D.TableCell({width:{size:ICW, type:DXA}, borders:cellNoB, verticalAlign:D.VerticalAlign.BOTTOM, margins:{bottom:40}, children:[new D.Paragraph({spacing:{before:0, after:0}, children:[new D.ImageRun({data:ics[i], transformation:{width:Math.min(w, 22), height:h}})]})]}),
+        new D.TableCell({width:{size:TXW, type:DXA}, borders:{...cellNoB, bottom:{style:D.BorderStyle.SINGLE, size:8, color:'000000'}}, verticalAlign:D.VerticalAlign.BOTTOM, margins:{bottom:30, left:60}, children:[new D.Paragraph({spacing:{before:0, after:0}, children:[new D.TextRun({text:v || '', bold:true, size:v && v.length > 24 ? 18 : 22, font:'Arial'})]})]})
+      ]}));
+    });
+    const fields = new D.Table({width:{size:ICW + TXW, type:DXA}, columnWidths:[ICW, TXW], layout:D.TableLayoutType.FIXED, borders:noB, rows});
+    const right = new D.TableCell({width:{size:ICW + TXW, type:DXA}, borders:cellNoB, verticalAlign:D.VerticalAlign.TOP, children:[
+      new D.Paragraph({alignment:D.AlignmentType.RIGHT, spacing:{before:0, after:0}, children:[new D.TextRun({text:o ? fmtNum(o.num) : ' ', bold:true, size:17, font:'Arial'})]}), fields, tiny()]});
+    const left = new D.TableCell({width:{size:LOGOW, type:DXA}, borders:cellNoB, verticalAlign:D.VerticalAlign.CENTER, children:[logoPara()]});
+    const inner = new D.Table({width:{size:LOGOW + ICW + TXW, type:DXA}, columnWidths:[LOGOW, ICW + TXW], layout:D.TableLayoutType.FIXED, borders:noB, rows:[new D.TableRow({children:[left, right]})]});
+    return new D.TableCell({width:{size:COLW, type:DXA}, borders:{top:thick, bottom:thick, left:thick, right:thick}, margins:{top:60, bottom:60, left:90, right:90}, verticalAlign:D.VerticalAlign.CENTER, children:[inner, tiny()]});
+  }
+  const pages = []; for(let i=0; i<Math.max(1, list.length); i+=PER_SHEET) pages.push(list.slice(i, i+PER_SHEET));
+  const sections = pages.map(pg => {
+    const rows = []; for(let r=0; r<4; r++) rows.push(new D.TableRow({height:{value:ROWH, rule:D.HeightRule.EXACT}, cantSplit:true, children:[label(pg[r*2]), label(pg[r*2+1])]}));
+    return {properties:{page:{size:{width:12240, height:15840, orientation:D.PageOrientation.PORTRAIT}, margin:{top:360, bottom:200, left:360, right:360, header:0, footer:0}}},
+      children:[new D.Table({width:{size:COLW*2, type:DXA}, columnWidths:[COLW, COLW], layout:D.TableLayoutType.FIXED, rows}), tiny()]};
+  });
+  const doc = new D.Document({creator:cfg.marca || 'STYLUS', title:'Membretes de envío', styles:{default:{document:{run:{font:'Arial', size:20}}}}, sections});
+  const blob = await D.Packer.toBlob(doc);
+  const nums = list.length ? `${pad(list[0].num, 4)}-${pad(list[list.length-1].num, 4)}` : 'vacio';
+  const r = await shareOrDownload(blob, `Membretes_${(cfg.marca || 'envios').replace(/\W+/g,'')}_${nums}.docx`);
+  if(r !== 'cancel') setTimeout(() => askMarkPrinted(list), 700);
+}
+
+/* ---------- CLIENTES ---------- */
+function vCli(){
+  const qq = norm(cliQuery); const qd = digits(cliQuery);
+  let list = clients.map(c => ({c, n:countOf(c.id), last:(ordersOf(c.id).sort((a, b) => b.fecha.localeCompare(a.fecha))[0] || {}).fecha || c.alta}))
+    .filter(({c}) => !qq || norm(c.nombre).includes(qq) || norm(c.ciudad).includes(qq) || (qd.length >= 3 && (digits(c.ci).includes(qd) || digits(c.cel).includes(qd))));
+  list.sort(cliSort === 'top' ? (a, b) => b.n - a.n || a.c.nombre.localeCompare(b.c.nombre) : cliSort === 'rec' ? (a, b) => String(b.last).localeCompare(String(a.last)) : (a, b) => a.c.nombre.localeCompare(b.c.nombre, 'es'));
+  const vip = clients.filter(c => levelOf(countOf(c.id)).k === 'vip').length, frec = clients.filter(c => levelOf(countOf(c.id)).k === 'frec').length;
+  return `<div class="row between"><h2>Clientes <span class="sub num">(${clients.length})</span></h2><button class="btn sm gold" id="promo" ${vip + frec ? '' : 'disabled'}>${small(I.gift)} Promoción</button></div>
+  <div class="row" style="gap:6px"><span class="pill vip">${vip} VIP</span><span class="pill frec">${frec} frecuentes</span><span class="hint">VIP desde ${cfg.nivVip} pedidos · frecuente desde ${cfg.nivFrec}</span></div>
+  <div class="search field"><span>${I.search}</span><input id="cq" placeholder="Buscar por nombre, ciudad, C.I. o celular" value="${esc(cliQuery)}" autocomplete="off"></div>
+  <div class="chips">${[['top','Más compras'],['rec','Recientes'],['az','A–Z']].map(([k, l]) => `<button class="chip ${cliSort === k ? 'on' : ''}" data-s="${k}">${l}</button>`).join('')}</div>
+  ${list.length ? `<div class="list">${list.map(({c, n}, i) => { const lv = levelOf(n); return `<div class="item" data-c="${c.id}"><div class="badge ${cliSort === 'top' && i < 3 && n ? 'k' : ''} num">${cliSort === 'top' && !qq ? i + 1 : n}</div><div class="nm"><b>${esc(c.nombre)}</b><small>${esc([c.ciudad, c.cel].filter(Boolean).join(' · '))}</small><div class="row" style="gap:5px;margin-top:3px"><span class="pill ${lv.k}">${lv.t}</span><span class="hint num">${n} pedido${n === 1 ? '' : 's'}</span></div></div>${small(I.right)}</div>`; }).join('')}</div>`
+  : `<div class="card soft empty"><b>${clients.length ? 'Sin resultados' : 'Aún no hay clientes'}</b>${clients.length ? '' : 'Se agregan solos al registrar pedidos.'}</div>`}`;
+}
+function bindCli(){
+  const cq = $('#cq'); cq.oninput = () => { cliQuery = cq.value; const p = cq.selectionStart; render(); const n = $('#cq'); n.focus(); n.setSelectionRange(p, p); };
+  $$('[data-s]').forEach(b => b.onclick = () => { cliSort = b.dataset.s; render(); });
+  $$('[data-c]').forEach(el => el.onclick = () => clientSheet(el.dataset.c));
+  $('#promo').onclick = promoQueue;
+}
+function clientSheet(id){
+  const c = clients.find(x => x.id === id); if(!c) return; const os = ordersOf(c.id).sort((a, b) => b.fecha.localeCompare(a.fecha)); const n = os.length; const lv = levelOf(n);
+  const nextDisc = discountFor(n + 1, lv); const cada = Number(cfg.descCada); const falta = cfg.descOn && cada > 0 ? cada - (n % cada) : 0;
+  sheet(`<div class="row between"><h3>Cliente</h3><span class="pill ${lv.k}">${lv.t}</span></div>
+  <div class="field"><label for="cN">Nombre</label><input id="cN" value="${esc(c.nombre)}"></div>
+  <div class="field"><label for="cC">Ciudad</label><input id="cC" value="${esc(c.ciudad)}" list="dlC2"><datalist id="dlC2">${knownCities().map(x => `<option value="${esc(x)}">`).join('')}</datalist></div>
+  <div class="grid2"><div class="field"><label for="cI">C.I.</label><input id="cI" value="${esc(c.ci)}"></div><div class="field"><label for="cT">Celular</label><input id="cT" value="${esc(c.cel)}" inputmode="tel"></div></div>
+  <button class="btn sm" id="cSave">Guardar datos</button>
+  <div class="card soft">${nextDisc ? `<b>${small(I.gift)} Su próximo pedido tiene ${nextDisc.pct}% de descuento</b> (${esc(nextDisc.why.replace('es su', 'será su'))}).` : cfg.descOn && cada > 0 ? `Le falta${falta === 1 ? '' : 'n'} <b>${falta}</b> pedido${falta === 1 ? '' : 's'} para su descuento de ${cfg.descPct}%.` : 'Descuentos desactivados.'}</div>
+  <div class="grid2"><button class="btn pri" id="cNew">${I.plus} Nuevo pedido</button><button class="btn wa" id="cPromo">${I.wa} Promoción</button></div>
+  <h3 style="margin-top:6px">Historial <span class="sub num">(${n})</span></h3>
+  ${n ? `<div class="list">${os.map(o => `<div class="item" data-o="${o.id}" style="min-height:52px"><div class="badge num">${pad(o.num, 4).slice(-4)}</div><div class="nm"><b>${fCorta(o.fecha)}</b><small>${esc(o.ciudad)}${o.desc ? ` · ${o.desc}% desc.` : ''}</small></div><span class="pill ${EST[o.estado][1]}">${EST[o.estado][0]}</span></div>`).join('')}</div>` : '<p class="hint" style="margin:0">Sin pedidos.</p>'}
+  <button class="btn sm ghost" id="cDel" style="color:var(--bad)">Eliminar cliente</button>`, s => {
+    $('#cSave', s).onclick = async () => { Object.assign(c, {nombre:titleCase($('#cN', s).value.trim()) || c.nombre, ciudad:$('#cC', s).value.trim(), ci:$('#cI', s).value.trim(), cel:digits($('#cT', s).value).slice(-8)}); await saveClients(); render(); toast('Cliente actualizado'); };
+    $('#cNew', s).onclick = () => { closeSheet(); draft = newDraft(c); go('nuevo'); };
+    $('#cPromo', s).onclick = () => { const pct = (nextDisc && nextDisc.pct) || cfg.descPct; openWA(validPhone(c.cel) ? c.cel : '', fillTpl(cfg.msgPromo, {cid:c.id, nombre:c.nombre, ciudad:c.ciudad}, {descuento:pct})); };
+    $$('[data-o]', s).forEach(el => el.onclick = () => orderSheet(el.dataset.o));
+    $('#cDel', s).onclick = () => confirmSheet('Eliminar cliente', `¿Eliminar a <b>${esc(c.nombre)}</b>? ${n ? `Sus ${n} pedidos se conservan, pero ya no se contarán para promociones.` : ''}`, 'Eliminar', async () => { clients = clients.filter(x => x.id !== c.id); orders.forEach(o => { if(o.cid === c.id) o.cid = null; }); await saveClients(); await saveOrders(); render(); });
+  });
+}
+function promoQueue(){
+  let lvSel = 'vip';
+  const draw = s => {
+    const list = clients.map(c => ({c, n:countOf(c.id)})).filter(({n}) => lvSel === 'vip' ? levelOf(n).k === 'vip' : levelOf(n).k !== 'nuevo').sort((a, b) => b.n - a.n);
+    $('#pqL', s).innerHTML = list.map(({c, n}) => `<div class="item" style="cursor:default"><div class="badge k num">${n}</div><div class="nm"><b>${esc(c.nombre)}</b><small>${validPhone(c.cel) ? esc(c.cel) : '<b style="color:var(--bad)">sin celular</b>'}</small></div><button class="btn sm wa" data-p="${c.id}">${small(I.wa)}</button></div>`).join('') || '<div class="empty">Nadie en este grupo todavía.</div>';
+    $$('[data-p]', s).forEach(b => b.onclick = () => { const c = clients.find(x => x.id === b.dataset.p); openWA(validPhone(c.cel) ? c.cel : '', fillTpl(cfg.msgPromo, {cid:c.id, nombre:c.nombre, ciudad:c.ciudad}, {descuento:$('#pqP', s).value})); b.innerHTML = small(I.check); b.classList.remove('wa'); });
+  };
+  sheet(`<h3>Enviar promoción</h3><div class="chips"><button class="chip on" data-l="vip">Solo VIP</button><button class="chip" data-l="frec">VIP y frecuentes</button></div>
+  <div class="field"><label for="pqP">Descuento a ofrecer (%)</label><input id="pqP" type="number" min="1" max="90" value="${cfg.descPct}"></div>
+  <p class="hint" style="margin:0">Toca el botón verde de cada cliente: se abre WhatsApp con el mensaje listo. El texto se cambia en Más → Mensajes.</p><div class="list" id="pqL"></div>
+  <button class="btn block" onclick="closeSheet()">Listo</button>`, s => {
+    $$('[data-l]', s).forEach(b => b.onclick = () => { lvSel = b.dataset.l; $$('[data-l]', s).forEach(x => x.classList.toggle('on', x === b)); draw(s); });
+    draw(s);
+  });
+}
+
+/* ---------- RESUMEN ---------- */
+function periodStart(p){ const d = new Date(); d.setHours(0,0,0,0); if(p === 'sem'){ const k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k); } else if(p === 'mes') d.setDate(1); else if(p === 'todo') return new Date(0); return d; }
+function vRes(){
+  const st = periodStart(resPeriod).toISOString(); const os = orders.filter(o => o.fecha >= st);
+  const nuevos = clients.filter(c => (c.alta || '') >= st).length;
+  const env = os.filter(o => o.estado !== 'pend').length, ent = os.filter(o => o.estado === 'ent').length;
+  const byCity = {}; os.forEach(o => byCity[o.ciudad] = (byCity[o.ciudad] || 0) + 1); const cities = Object.entries(byCity).sort((a, b) => b[1] - a[1]).slice(0, 8); const maxC = cities.length ? cities[0][1] : 1;
+  const byCli = {}; os.forEach(o => { if(o.cid) byCli[o.cid] = (byCli[o.cid] || 0) + 1; }); const top = Object.entries(byCli).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  return `<h2>Resumen</h2>
+  <div class="chips">${[['hoy','Hoy'],['sem','Esta semana'],['mes','Este mes'],['todo','Todo']].map(([k, l]) => `<button class="chip ${resPeriod === k ? 'on' : ''}" data-p="${k}">${l}</button>`).join('')}</div>
+  <div class="stats"><div class="stat k"><b>${os.length}</b><span>Pedidos</span></div><div class="stat"><b>${nuevos}</b><span>Clientes nuevos</span></div><div class="stat"><b>${env}</b><span>Enviados</span></div><div class="stat"><b>${ent}</b><span>Entregados</span></div></div>
+  <div class="card stack"><h3>Ciudades de destino</h3>${cities.length ? `<div class="bars">${cities.map(([c, n]) => `<div class="bar"><span>${esc(c)}</span><div class="tr"><i style="width:${Math.max(4, n / maxC * 100)}%"></i></div><b class="num" style="text-align:right">${n}</b></div>`).join('')}</div>` : '<p class="hint" style="margin:0">Sin pedidos en este periodo.</p>'}</div>
+  <div class="card stack"><h3>Mejores clientes del periodo</h3>${top.length ? `<div class="list">${top.map(([cid, n], i) => { const c = clients.find(x => x.id === cid) || {nombre:'(eliminado)'}; return `<div class="item" data-c="${cid}" style="min-height:52px"><div class="badge ${i === 0 ? 'k' : ''} num">${i + 1}</div><div class="nm"><b>${esc(c.nombre)}</b><small>${esc(c.ciudad || '')}</small></div><b class="num">${n}</b></div>`; }).join('')}</div>` : '<p class="hint" style="margin:0">Sin datos.</p>'}</div>
+  <button class="btn block" id="xls">${I.dl} Exportar a Excel</button>`;
+}
+function bindRes(){
+  $$('[data-p]').forEach(b => b.onclick = () => { resPeriod = b.dataset.p; render(); });
+  $$('[data-c]').forEach(el => el.onclick = () => clientSheet(el.dataset.c));
+  $('#xls').onclick = exportXLS;
+}
+async function exportXLS(){
+  toast('Creando Excel…');
+  try{ await loadScript('vendor/xlsx.full.min.js'); }catch(e){ toast('Necesitas internet para exportar a Excel'); return; }
+  const est = {pend:'Por enviar', env:'Enviado', ent:'Entregado'};
+  const p = [['N° pedido','Fecha','Cliente','Ciudad','C.I.','Celular','Estado','N° guía','Descuento %','Nota']].concat(orders.slice().sort((a, b) => a.num - b.num).map(o => [o.num, o.fecha.slice(0,10), o.nombre, o.ciudad, o.ci, o.cel, est[o.estado], o.guia || '', o.desc || '', o.nota || '']));
+  const c = [['Cliente','Ciudad','C.I.','Celular','Pedidos','Nivel','Último pedido']].concat(clients.map(c => { const os = ordersOf(c.id); const n = os.length; const last = os.map(o => o.fecha).sort().pop() || ''; return [c.nombre, c.ciudad, c.ci, c.cel, n, levelOf(n).t, last.slice(0,10)]; }).sort((a, b) => b[4] - a[4]));
+  const wb = XLSX.utils.book_new(); const w1 = XLSX.utils.aoa_to_sheet(p); w1['!cols'] = [{wch:10},{wch:11},{wch:32},{wch:16},{wch:13},{wch:11},{wch:11},{wch:14},{wch:11},{wch:24}];
+  const w2 = XLSX.utils.aoa_to_sheet(c); w2['!cols'] = [{wch:32},{wch:16},{wch:13},{wch:11},{wch:9},{wch:11},{wch:13}];
+  XLSX.utils.book_append_sheet(wb, w1, 'Pedidos'); XLSX.utils.book_append_sheet(wb, w2, 'Clientes');
+  shareOrDownload(new Blob([XLSX.write(wb, {bookType:'xlsx', type:'array'})], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), `${(cfg.marca || 'Ventas').replace(/\W+/g,'')}_${today()}.xlsx`);
+}
+
+/* ---------- MÁS ---------- */
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+function installUI(){ return isStandalone() ? '' : `<button class="btn block" onclick="doInstall()">${I.dl} Instalar la app en este celular</button>`; }
+async function doInstall(){
+  if(installEvt){ installEvt.prompt(); await installEvt.userChoice; installEvt = null; return; }
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  sheet(`<h3>Instalar STYLUS</h3><p style="margin:0">${ios ? 'En Safari toca <b>Compartir</b> (cuadrado con flecha) → <b>“Agregar a inicio”</b>.' : 'En Chrome toca el menú <b>⋮</b> → <b>“Instalar aplicación”</b> o <b>“Agregar a la pantalla principal”</b>.'}</p><button class="btn pri block" onclick="closeSheet()">Entendido</button>`);
+}
+function vMas(){
+  const it = (r, ic, t, d) => `<div class="item" onclick="go('${r}')"><div class="badge">${small(ic, 22)}</div><div class="nm"><b>${t}</b><small>${d}</small></div>${small(I.right)}</div>`;
+  return `<h2>Más</h2><div class="list">
+  ${it('cfg', I.doc, 'Mi marca y descuentos', 'Logo, nombre, N° de pedido, niveles y reglas de descuento')}
+  ${it('msg', I.wa, 'Mensajes de WhatsApp', 'Pedido recibido, enviado, entregado y promoción')}
+  ${lic.role === 'owner' ? it('adm', I.lock, 'Administrador', 'Crea códigos mensuales o anuales para otros negocios') : ''}
+  </div>
+  <h3>Respaldo</h3>
+  <div class="card soft stack"><span class="hint">Tus clientes y pedidos se guardan en este celular. Haz un respaldo cada semana y guárdalo en tu Drive o envíatelo por WhatsApp. Con él puedes pasar todo a otro celular.</span>
+  <div class="grid2"><button class="btn" id="bkOut">${I.dl} Crear respaldo</button><label class="btn">Restaurar<input type="file" accept=".json,application/json" hidden id="bkIn"></label></div></div>
+  ${installUI()}
+  <div class="card soft"><span class="hint">Sesión: <b>${esc(lic.role === 'owner' ? 'Administrador' : lic.name)}</b>${lic.role !== 'owner' ? ` · acceso ${lic.plan === 'A' ? 'anual' : lic.plan === 'M' ? 'mensual' : ''} válido hasta <b>${fmtExp(lic.exp)}</b>` : ''} · versión ${APP_VERSION}</span></div>
+  <button class="btn ghost" id="logout">Cerrar sesión en este celular</button>`;
+}
+function bindMas(){
+  $('#bkOut').onclick = async () => {
+    toast('Preparando respaldo…'); const imgs = {};
+    for(const o of orders.filter(o => o.img)){ const b = await DB.get('img', o.id); if(b) imgs[o.id] = await blobToDataURL(b); }
+    const data = {app:'STYLUS', v:1, fecha:new Date().toISOString(), cfg, clients, orders, imgs};
+    shareOrDownload(new Blob([JSON.stringify(data)], {type:'application/json'}), `STYLUS_respaldo_${today()}.json`);
+  };
+  $('#bkIn').onchange = async e => { const f = e.target.files[0]; if(!f) return; let d; try{ d = JSON.parse(await f.text()); if(d.app !== 'STYLUS') throw 0; }catch(_){ toast('Ese archivo no es un respaldo de STYLUS'); return; }
+    confirmSheet('Restaurar respaldo', `Tiene <b>${(d.clients||[]).length}</b> clientes y <b>${(d.orders||[]).length}</b> pedidos. Reemplazará los datos de este celular.`, 'Restaurar', async () => {
+      cfg = Object.assign(defaultCfg(), d.cfg || {}); clients = d.clients || []; orders = d.orders || [];
+      for(const [id, u] of Object.entries(d.imgs || {})) await DB.set('img', id, await dataURLToBlob(u));
+      await saveCfg(); await saveClients(); await saveOrders(); go('ped'); toast('Respaldo restaurado'); });
+  };
+  $('#logout').onclick = () => confirmSheet('Cerrar sesión', 'Tus clientes y pedidos se quedan guardados en este celular. Para volver a entrar necesitarás tu código.', 'Cerrar sesión', () => { lic = null; DB.del('kv', 'lic'); LSset('stylus_lic', null); route = 'welcome'; render(); });
+}
+function vCfg(){
+  const f = (id, l, v, a='') => `<div class="field"><label for="${id}">${l}</label><input id="${id}" value="${esc(v)}" ${a}></div>`;
+  const lg = logoSrc();
+  return `<div class="row"><button class="btn sm ghost" onclick="go('mas')" aria-label="Volver">${I.left}</button><h2>Mi marca</h2></div>
+  ${!cfg.marca ? `<div class="banner">Escribe el nombre de tu negocio y sube tu logo. Aparecerán en los membretes y mensajes.</div>` : ''}
+  ${f('gM', 'Nombre del negocio', cfg.marca, 'placeholder="Ej.: STYLUS"')}
+  ${f('gL', 'Frase o eslogan (opcional)', cfg.lema, 'placeholder="Ej.: Born to win"')}
+  <div class="row"><div class="badge" style="width:84px;height:84px;background:#fff;border:1.5px dashed var(--line);padding:4px">${lg ? `<img src="${lg}" alt="" style="width:100%;height:100%;object-fit:contain">` : 'Sin logo'}</div>
+  <div class="stack" style="flex:1"><b>Logo del membrete</b><span class="hint">Mejor en negro con fondo blanco o transparente.</span><div class="row"><label class="btn sm">Subir logo<input type="file" accept="image/*" hidden id="gLogo"></label>${cfg.logo ? '<button class="btn sm ghost" id="gLogoX">Quitar</button>' : ''}${cfg.logo !== 'default' && lic.role === 'owner' ? '<button class="btn sm ghost" id="gLogoD">Usar logo STYLUS</button>' : ''}</div></div></div>
+  <h3>Numeración</h3>${f('gNum', 'Próximo N° de pedido', cfg.nextNum, 'type="number" min="1"')}
+  <h3>Niveles de cliente</h3><div class="grid2">${f('gF', 'Frecuente desde (pedidos)', cfg.nivFrec, 'type="number" min="1"')}${f('gV', 'VIP desde (pedidos)', cfg.nivVip, 'type="number" min="2"')}</div>
+  <h3>Descuentos</h3>
+  <label class="row" style="font-weight:700"><input type="checkbox" id="gDOn" ${cfg.descOn ? 'checked' : ''} style="width:20px;height:20px;accent-color:#111"> Descuento por cantidad de pedidos</label>
+  <div class="grid2">${f('gDC', 'Cada cuántos pedidos', cfg.descCada, 'type="number" min="1"')}${f('gDP', 'Descuento (%)', cfg.descPct, 'type="number" min="1" max="90"')}</div>
+  <span class="hint">Ej.: cada 5 pedidos → el 5.º, 10.º, 15.º… tienen ese descuento.</span>
+  <label class="row" style="font-weight:700"><input type="checkbox" id="gVOn" ${cfg.vipOn ? 'checked' : ''} style="width:20px;height:20px;accent-color:#111"> Descuento permanente para clientes VIP</label>
+  ${f('gVP', 'Descuento VIP (%)', cfg.vipPct, 'type="number" min="1" max="90"')}
+  <button class="btn pri big block" id="gSave">Guardar</button>`;
+}
+function readCfg(){ const v = id => $('#' + id); const num = (id, d) => Math.max(1, parseInt(v(id).value) || d);
+  cfg.marca = v('gM').value.trim(); cfg.lema = v('gL').value.trim(); cfg.nextNum = num('gNum', cfg.nextNum); cfg.nivFrec = num('gF', 3); cfg.nivVip = Math.max(cfg.nivFrec + 1, num('gV', 6));
+  cfg.descOn = v('gDOn').checked; cfg.descCada = num('gDC', 5); cfg.descPct = Math.min(90, num('gDP', 10)); cfg.vipOn = v('gVOn').checked; cfg.vipPct = Math.min(90, num('gVP', 5)); }
+function bindCfg(){
+  $('#gLogo').onchange = async e => { const f = e.target.files[0]; if(!f) return; readCfg(); cfg.logo = await logoFromFile(f); await saveCfg(); render(); toast('Logo actualizado'); };
+  const x = $('#gLogoX'); if(x) x.onclick = async () => { readCfg(); cfg.logo = ''; await saveCfg(); render(); };
+  const d = $('#gLogoD'); if(d) d.onclick = async () => { readCfg(); cfg.logo = 'default'; await saveCfg(); render(); };
+  $('#gSave').onclick = async () => { readCfg(); await saveCfg(); toast('Guardado'); go('mas'); };
+}
+function vMsg(){
+  const t = [['msgRec','Pedido recibido'],['msgEnv','Pedido enviado (con la guía)'],['msgEnt','Agradecimiento (entregado)'],['msgPromo','Promoción'],['msgDesc','Aviso de descuento (se agrega al “recibido”)']];
+  return `<div class="row"><button class="btn sm ghost" onclick="go('mas')" aria-label="Volver">${I.left}</button><h2>Mensajes</h2></div>
+  <span class="hint">Puedes usar: {nombre} {nombrecompleto} {pedido} {ciudad} {guia} {marca} {nivel} {descuento} {n}. Para negrita usa *asteriscos*.</span>
+  ${t.map(([k, l]) => `<div class="field"><label for="${k}">${l}</label><textarea id="${k}">${esc(cfg[k])}</textarea></div>`).join('')}
+  <button class="btn sm ghost" id="mRes" style="align-self:flex-start">Restaurar mensajes originales</button>
+  <button class="btn pri big block" id="mSave">Guardar mensajes</button>`;
+}
+function bindMsg(){
+  $('#mRes').onclick = () => { const d = defaultCfg(); ['msgRec','msgEnv','msgEnt','msgPromo','msgDesc'].forEach(k => $('#' + k).value = d[k]); };
+  $('#mSave').onclick = async () => { ['msgRec','msgEnv','msgEnt','msgPromo','msgDesc'].forEach(k => cfg[k] = $('#' + k).value); await saveCfg(); toast('Mensajes guardados'); go('mas'); };
+}
+
+/* ---------- ADMINISTRADOR ---------- */
+function addDays(n){ const d = new Date(); d.setDate(d.getDate() + n); return ymd(d); }
+function vAdm(){
+  const issued = LSget('stylus_issued', []);
+  return `<div class="row"><button class="btn sm ghost" onclick="go('mas')" aria-label="Volver">${I.left}</button><h2>Administrador</h2></div>
+  <div class="card soft"><span class="hint">Crea un código para cada negocio que compre STYLUS. Cada uno tendrá su propio espacio con su logo, sus clientes y sus pedidos. Al vencer, la app le pedirá un código nuevo; sus datos no se pierden.</span></div>
+  <div class="field"><label for="aN">Nombre del negocio o persona</label><input id="aN" placeholder="Ej.: Tienda Moda Sofía"></div>
+  <div class="chips"><button class="chip on" data-plan="M">Mensual (30 días)</button><button class="chip" data-plan="A">Anual (365 días)</button></div>
+  <div class="field"><label for="aE">Válido hasta</label><input id="aE" type="date" value="${addDays(30)}"></div>
+  <button class="btn pri big block" id="aGen">${I.plus} Crear código</button>
+  <div id="aOut"></div>
+  <h3>Códigos entregados</h3>
+  ${issued.length ? `<div class="list">${issued.slice().reverse().map(c => { const venc = c.exp && c.exp < today(); return `<div class="item" style="cursor:default"><div class="nm"><b>${esc(c.name)}</b><small>${c.plan === 'A' ? 'Anual' : 'Mensual'} · hasta ${esc(c.exp)}${venc ? ' · <b style="color:var(--bad)">vencido</b>' : ''}${c.rev ? ' · <b style="color:var(--bad)">desactivado</b>' : ''}</small></div><button class="btn sm" data-ren="${c.id}">Renovar</button><button class="btn sm ghost" data-sh="${c.id}">Enviar</button></div>`; }).join('')}</div>` : '<p class="hint" style="margin:0">Aún no creaste códigos.</p>'}
+  ${issued.some(c => !c.rev) ? '<button class="btn sm ghost" id="aRevList">Desactivar un código antes de su vencimiento</button>' : ''}<div id="revBox"></div>`;
+}
+function bindAdm(){
+  let plan = 'M';
+  $$('[data-plan]').forEach(b => b.onclick = () => { plan = b.dataset.plan; $$('[data-plan]').forEach(x => x.classList.toggle('on', x === b)); $('#aE').value = addDays(plan === 'A' ? 365 : 30); });
+  $('#aGen').onclick = async () => { const name = $('#aN').value.trim(); if(!name){ toast('Escribe el nombre'); return; }
+    try{ const {id, code} = await makeCode(name, $('#aE').value, plan); const is = LSget('stylus_issued', []); const rec = {id, name, exp:$('#aE').value, plan, code, date:today()}; is.push(rec); LSset('stylus_issued', is); render(); showCode(rec); }catch(e){ toast('No se pudo crear el código'); } };
+  $$('[data-sh]').forEach(b => b.onclick = () => showCode(LSget('stylus_issued', []).find(c => c.id === b.dataset.sh)));
+  $$('[data-ren]').forEach(b => b.onclick = () => { const c = LSget('stylus_issued', []).find(x => x.id === b.dataset.ren); $('#aN').value = c.name; $('#aN').scrollIntoView({behavior:'smooth', block:'center'}); toast('Elige el plan y toca Crear código'); });
+  const rl = $('#aRevList'); if(rl) rl.onclick = () => {
+    const is = LSget('stylus_issued', []).filter(c => !c.rev);
+    sheet(`<h3>Desactivar código</h3><div class="list">${is.map(c => `<div class="item" data-r="${c.id}"><div class="nm"><b>${esc(c.name)}</b><small>hasta ${esc(c.exp)}</small></div></div>`).join('')}</div>`, s => {
+      $$('[data-r]', s).forEach(el => el.onclick = () => { const all = LSget('stylus_issued', []); all.forEach(c => { if(c.id === el.dataset.r) c.rev = true; }); LSset('stylus_issued', all); closeSheet(); render(); showRevoked(); });
+    });
+  };
+}
+function showCode(c){
+  const link = baseURL() + '#c=' + c.code;
+  const msg = `Hola ${c.name} 👋 Aquí tienes tu acceso a *STYLUS*, la app para membretes de envío, clientes y guías por WhatsApp.\n\n1) Abre este enlace en tu celular (se activa solo):\n${link}\n\n2) Instálala: menú ⋮ → “Instalar aplicación” (Android) o Compartir → “Agregar a inicio” (iPhone).\n\nPlan ${c.plan === 'A' ? 'anual' : 'mensual'}, válido hasta el ${c.exp.split('-').reverse().join('/')}. Este acceso es personal.`;
+  const out = $('#aOut'); if(!out) return;
+  out.innerHTML = `<div class="card stack"><b>Código de ${esc(c.name)}</b><div class="code">${esc(c.code)}</div><div class="grid2"><button class="btn wa" id="cWA">${I.wa} Enviar</button><button class="btn" id="cCp">Copiar enlace</button></div></div>`;
+  $('#cWA').onclick = () => openWA('', msg); $('#cCp').onclick = () => copyText(link);
+  out.scrollIntoView({behavior:'smooth', block:'center'});
+}
+function showRevoked(){
+  const json = JSON.stringify({ids:LSget('stylus_issued', []).filter(c => c.rev).map(c => c.id)}); const box = $('#revBox'); if(!box) return;
+  box.innerHTML = `<div class="card stack"><b>Último paso</b><span class="hint">Envíame este texto (o reemplaza con él el archivo <b>revocados.json</b> del sitio). La app de ese negocio se bloqueará la próxima vez que se abra con internet.</span><div class="code">${esc(json)}</div><button class="btn" id="rvCp">Copiar</button></div>`;
+  $('#rvCp').onclick = () => copyText(json);
+}
+
+/* ---------- Arranque ---------- */
+(async function boot(){
+  if('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  try{ await loadAll(); }catch(e){ document.body.innerHTML = '<p style="padding:20px">Este navegador no permite guardar datos. Abre la app en Chrome o Safari (no en modo incógnito).</p>'; return; }
+  const h = location.hash;
+  if(h.startsWith('#c=')){ const code = h.slice(3); history.replaceState(null, '', location.pathname);
+    if(!lic || lic.role !== 'owner'){ try{ await activate(code); return; }catch(e){ route = 'activar'; render(); $('#acCode').value = code; $('#acErr').textContent = e.message; return; } } }
+  if(!lic) route = 'welcome';
+  render();
+  if(lic) checkLicense();
+})();
+</script>
+</body>
+</html>

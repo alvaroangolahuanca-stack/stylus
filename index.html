@@ -166,7 +166,7 @@ h3{font:16px var(--display);text-transform:uppercase;letter-spacing:.6px}
    STYLUS — membretes de envío, clientes y guías por WhatsApp
    Datos guardados en el celular (IndexedDB).
    ========================================================= */
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1';
 const ADMIN_PUB = {kty:'EC',crv:'P-256',x:'4FQodfEaGt87OxQGmwuweN7UhL1yra0rtaM3065_pNU',y:'E4ckp3sAiVOfUVeKxXcGKJjg5U9CezfyCGq2MkF45GU',ext:true};
 const PER_SHEET = 8;
 
@@ -657,16 +657,34 @@ function enhanceDoc(c){
 async function sendGuide(o){
   const msg = fillTpl(cfg.msgEnv, o); const blob = o.img ? await DB.get('img', o.id) : null;
   if(!blob){ sendTo(o, msg); return; }
-  const file = new File([blob], `Guia_${fmtNum(o.num).replace(/\W+/g,'')}_${o.nombre.split(' ')[0]}.jpg`, {type:'image/jpeg'});
-  const cel = o.cel;
-  sheet(`<h3>Enviar guía a ${esc(o.nombre.split(' ')[0])}</h3>
-  <p class="hint" style="margin:0"><b>1.</b> Toca <b>Compartir foto</b> y elige WhatsApp → busca a <b>${esc(o.nombre)}</b>${validPhone(cel) ? ` (${esc(cel)})` : ''}. El mensaje ya va copiado: si no aparece debajo de la foto, mantén presionado y elige <b>Pegar</b>.</p>
-  <button class="btn wa big block" id="sgShare">${I.wa} Compartir foto + mensaje</button>
-  <p class="hint" style="margin:0"><b>2.</b> ¿Prefieres abrir directo su chat? Envía el mensaje y luego adjunta la foto desde la galería.</p>
-  <div class="grid2"><button class="btn" id="sgChat" ${validPhone(cel) ? '' : 'disabled'}>Abrir su chat</button><button class="btn" id="sgSave">${I.dl} Guardar foto</button></div>`, s => {
-    $('#sgShare', s).onclick = async () => { await copyText(msg, 'Mensaje copiado'); if(navigator.canShare && navigator.canShare({files:[file]})){ try{ await navigator.share({files:[file], text:msg}); }catch(e){} } else { downloadBlob(blob, file.name); sendTo(o, msg); } };
-    $('#sgChat', s).onclick = () => sendTo(o, msg);
-    $('#sgSave', s).onclick = () => downloadBlob(blob, file.name);
+  const name = `Guia_${fmtNum(o.num).replace(/\W+/g,'')}_${o.nombre.split(' ')[0]}.jpg`;
+  const file = new File([blob], name, {type:'image/jpeg'});
+  const cel = o.cel, okTel = validPhone(cel), first = esc(o.nombre.split(' ')[0]);
+  const canShare = !!(navigator.canShare && navigator.canShare({files:[file]}));
+  const canClip = !!(window.ClipboardItem && navigator.clipboard && navigator.clipboard.write);
+  sheet(`<h3>Enviar guía a ${first}</h3>
+  <p class="hint" style="margin:0">WhatsApp no deja abrir un chat con la foto ya puesta. Por eso son <b>2 toques</b>: primero el mensaje y después la foto.</p>
+  <div class="card stack" id="st1"><div class="row between"><b>1. Mensaje</b><span class="pill imp" id="st1s">pendiente</span></div>
+  <span class="hint">Se abre el chat de <b>${esc(o.nombre)}</b>${okTel ? ` (${esc(cel)})` : ''} con el mensaje listo. Toca <b>enviar ➤</b> y <b>vuelve a esta app</b>.</span>
+  <button class="btn wa block" id="sg1">${I.wa} ${okTel ? 'Abrir su chat con el mensaje' : 'Enviar mensaje (elegir contacto)'}</button></div>
+  <div class="card stack" id="st2"><div class="row between"><b>2. Foto de la guía</b><span class="pill imp" id="st2s">pendiente</span></div>
+  <span class="hint">Toca el botón y elige <b>WhatsApp</b>. Como le acabas de escribir, <b>${first} aparece primero</b> en la lista de “Recientes”: tócalo y envía.</span>
+  <button class="btn wa block" id="sg2">${I.cam} Enviar la foto</button>
+  ${canClip ? `<button class="btn sm" id="sgClip">O copiar la foto para pegarla en su chat</button>` : ''}</div>
+  <button class="btn sm ghost" id="sgSave">${I.dl} Guardar la foto en el celular</button>`, s => {
+    const done = (id) => { const p = $('#' + id + 's', s); p.textContent = 'hecho'; p.className = 'pill ent'; };
+    $('#sg1', s).onclick = () => { sendTo(o, msg); done('st1'); };
+    $('#sg2', s).onclick = async () => {
+      if(canShare){ try{ await navigator.share({files:[file]}); done('st2'); }catch(e){ if(e.name !== 'AbortError') toast('No se pudo compartir. Usa “Guardar la foto”.'); } }
+      else { downloadBlob(blob, name); toast('Foto guardada: adjúntala desde la galería en su chat'); done('st2'); }
+    };
+    const cb = $('#sgClip', s); if(cb) cb.onclick = async () => {
+      try{ const im = await createImageBitmap(blob); const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; c.getContext('2d').drawImage(im, 0, 0);
+        const png = await new Promise(ok => c.toBlob(ok, 'image/png')); await navigator.clipboard.write([new ClipboardItem({'image/png':png})]);
+        toast('Foto copiada. En su chat mantén presionado y elige Pegar'); if(okTel) setTimeout(() => openWA(cel, ''), 600); }
+      catch(e){ toast('Este celular no permite copiar fotos. Usa “Enviar la foto”.'); }
+    };
+    $('#sgSave', s).onclick = () => downloadBlob(blob, name);
   });
 }
 

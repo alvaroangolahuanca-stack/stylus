@@ -166,7 +166,7 @@ h3{font:16px var(--display);text-transform:uppercase;letter-spacing:.6px}
    STYLUS — membretes de envío, clientes y guías por WhatsApp
    Datos guardados en el celular (IndexedDB).
    ========================================================= */
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.0.2';
 const ADMIN_PUB = {kty:'EC',crv:'P-256',x:'4FQodfEaGt87OxQGmwuweN7UhL1yra0rtaM3065_pNU',y:'E4ckp3sAiVOfUVeKxXcGKJjg5U9CezfyCGq2MkF45GU',ext:true};
 const PER_SHEET = 8;
 
@@ -326,13 +326,13 @@ function parseClient(txt){
   const celL = take(/(?:cel(?:ular)?|tel(?:[eé]fono|f)?|whats?app|wsp|n[uú]mero|contacto|cell?)\s*(?:n[°ºo.]*)?\s*[:=\-]?\s*((?:\+?\s?591[\s\-]?)?[67](?:[\s\-]?\d){7})/i);
   res.ci = ciL ? ciL.toUpperCase().replace(/\s+/g,' ') : ''; res.cel = celL ? digits(celL).slice(-8) : '';
   // Sin etiqueta: celulares y C.I.
-  if(!res.cel){ const m = t.match(/(?:\+?591[\s\-]?)?\b([67](?:[\s\-]?\d){7})\b/); if(m){ res.cel = digits(m[1]); t = t.replace(m[0], ' \n '); } }
+  if(!res.cel){ const m = t.match(/(?:\+?591[\s\-]?|\b)([67](?:[\s\-]?\d){7})\b/); if(m){ res.cel = digits(m[1]); t = t.replace(m[0], ' \n '); } }
   if(!res.ci){ const m = t.match(/\b(\d{5,10})(\s?-?\s?[0-9][A-Z])?(\s?(?:LP|CB|SC|OR|PT|CH|TJ|BE|PD))?\b/i); if(m){ res.ci = m[0].toUpperCase().trim(); t = t.replace(m[0], ' \n '); } }
   // Ciudad conocida
   if(!res.ciudad){
     const nt = norm(t); let best = null;
     knownCities().forEach(c => { const nc = norm(c); const re = new RegExp('(^|[^a-z])' + nc.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '([^a-z]|$)'); const m = nt.match(re); if(m && (!best || nc.length > best.n.length)) best = {c, n:nc, i:m.index}; });
-    if(best){ res.ciudad = best.c; const idx = norm(t).indexOf(best.n); if(idx >= 0) t = t.slice(0, idx) + ' \n ' + t.slice(idx + best.n.length); }
+    if(best){ res.ciudad = best.c; const idx = t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().indexOf(best.n); if(idx >= 0) t = t.slice(0, idx) + ' \n ' + t.slice(idx + best.n.length); }
   } else { const k = knownCities().find(c => norm(c) === norm(res.ciudad)); res.ciudad = k || titleCase(res.ciudad); }
   // Nombre: el primer fragmento con 2+ palabras y sin números
   if(!res.nombre){
@@ -777,13 +777,16 @@ function vCli(){
   <div class="search field"><span>${I.search}</span><input id="cq" placeholder="Buscar por nombre, ciudad, C.I. o celular" value="${esc(cliQuery)}" autocomplete="off"></div>
   <div class="chips">${[['top','Más compras'],['rec','Recientes'],['az','A–Z']].map(([k, l]) => `<button class="chip ${cliSort === k ? 'on' : ''}" data-s="${k}">${l}</button>`).join('')}</div>
   ${list.length ? `<div class="list">${list.map(({c, n}, i) => { const lv = levelOf(n); return `<div class="item" data-c="${c.id}"><div class="badge ${cliSort === 'top' && i < 3 && n ? 'k' : ''} num">${cliSort === 'top' && !qq ? i + 1 : n}</div><div class="nm"><b>${esc(c.nombre)}</b><small>${esc([c.ciudad, c.cel].filter(Boolean).join(' · '))}</small><div class="row" style="gap:5px;margin-top:3px"><span class="pill ${lv.k}">${lv.t}</span><span class="hint num">${n} pedido${n === 1 ? '' : 's'}</span></div></div>${small(I.right)}</div>`; }).join('')}</div>`
-  : `<div class="card soft empty"><b>${clients.length ? 'Sin resultados' : 'Aún no hay clientes'}</b>${clients.length ? '' : 'Se agregan solos al registrar pedidos.'}</div>`}`;
+  : `<div class="card soft empty"><b>${clients.length ? 'Sin resultados' : 'Aún no hay clientes'}</b>${clients.length ? '' : 'Se agregan solos al registrar pedidos.'}</div>`}
+  <div class="grid2"><button class="btn" id="cImp">${I.paste} Importar lista</button><button class="btn" id="cVcf">${I.users} Guardar en contactos</button></div>`;
 }
 function bindCli(){
   const cq = $('#cq'); cq.oninput = () => { cliQuery = cq.value; const p = cq.selectionStart; render(); const n = $('#cq'); n.focus(); n.setSelectionRange(p, p); };
   $$('[data-s]').forEach(b => b.onclick = () => { cliSort = b.dataset.s; render(); });
   $$('[data-c]').forEach(el => el.onclick = () => clientSheet(el.dataset.c));
   $('#promo').onclick = promoQueue;
+  $('#cImp').onclick = importClients;
+  $('#cVcf').onclick = exportContacts;
 }
 function clientSheet(id){
   const c = clients.find(x => x.id === id); if(!c) return; const os = ordersOf(c.id).sort((a, b) => b.fecha.localeCompare(a.fecha)); const n = os.length; const lv = levelOf(n);
@@ -804,6 +807,39 @@ function clientSheet(id){
     $$('[data-o]', s).forEach(el => el.onclick = () => orderSheet(el.dataset.o));
     $('#cDel', s).onclick = () => confirmSheet('Eliminar cliente', `¿Eliminar a <b>${esc(c.nombre)}</b>? ${n ? `Sus ${n} pedidos se conservan, pero ya no se contarán para promociones.` : ''}`, 'Eliminar', async () => { clients = clients.filter(x => x.id !== c.id); orders.forEach(o => { if(o.cid === c.id) o.cid = null; }); await saveClients(); await saveOrders(); render(); });
   });
+}
+function importClients(){
+  sheet(`<h3>Importar lista de clientes</h3><p class="hint" style="margin:0">Pega una persona por línea: <b>nombre y celular</b> (la ciudad y el C.I. son opcionales). Sirve copiar desde Excel, notas o un mensaje.</p>
+  <div class="field"><textarea id="imT" style="min-height:170px" placeholder="Juan Pérez Mamani 71234567 Cochabamba&#10;María Quispe, 67890123, El Alto&#10;Rosa Limachi	70011223"></textarea></div>
+  <p class="hint" id="imR" style="margin:0"></p>
+  <div class="grid2"><button class="btn" id="imP">${I.paste} Pegar</button><button class="btn pri" id="imGo">Revisar</button></div>`, s => {
+    const ta = $('#imT', s); let found = [];
+    $('#imP', s).onclick = async () => { try{ ta.value = await navigator.clipboard.readText(); $('#imGo', s).click(); }catch(e){ ta.focus(); toast('Mantén presionado el recuadro y elige Pegar'); } };
+    $('#imGo', s).onclick = async () => {
+      if(found.length && $('#imGo', s).dataset.ok){ let nu = 0, up = 0;
+        found.forEach(r => { let c = r.ci ? clients.find(x => digits(x.ci) && digits(x.ci) === digits(r.ci)) : null; if(!c && r.cel) c = clients.find(x => digits(x.cel) === r.cel); if(!c && r.nombre) c = clients.find(x => norm(x.nombre) === norm(r.nombre));
+          if(c){ c.cel = c.cel || r.cel; c.ciudad = c.ciudad || r.ciudad; c.ci = c.ci || r.ci; if(!c.nombre || /^\d/.test(c.nombre)) c.nombre = r.nombre; up++; }
+          else { clients.push({id:uid(), nombre:r.nombre || ('Cliente ' + r.cel), ciudad:r.ciudad, ci:r.ci, cel:r.cel, alta:new Date().toISOString()}); nu++; } });
+        await saveClients(); closeSheet(); render(); toast(`${nu} clientes nuevos · ${up} actualizados`); return; }
+      found = ta.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => parseClient(l.replace(/\t/g, ', '))).filter(r => r.cel && validPhone(r.cel)).map(r => ({...r, cel:digits(r.cel).slice(-8)}));
+      const lines = ta.value.split(/\r?\n/).filter(l => l.trim()).length;
+      $('#imR', s).innerHTML = found.length ? `Encontré <b>${found.length}</b> persona${found.length === 1 ? '' : 's'} con celular válido${lines - found.length ? ` (${lines - found.length} línea${lines - found.length === 1 ? '' : 's'} sin celular se omiten)` : ''}.<br>${found.slice(0, 4).map(r => `• ${esc(r.nombre || '(sin nombre)')} – ${esc(r.cel)}${r.ciudad ? ' – ' + esc(r.ciudad) : ''}`).join('<br>')}${found.length > 4 ? '<br>…' : ''}` : '<b style="color:var(--bad)">No encontré celulares válidos (8 dígitos que empiezan con 6 o 7).</b>';
+      if(found.length){ const b = $('#imGo', s); b.dataset.ok = '1'; b.textContent = `Agregar ${found.length} a mis clientes`; }
+    };
+    ta.oninput = () => { found = []; const b = $('#imGo', s); delete b.dataset.ok; b.textContent = 'Revisar'; };
+  });
+}
+function exportContacts(){
+  const list = clients.filter(c => validPhone(c.cel));
+  if(!list.length){ toast('Aún no hay clientes con celular'); return; }
+  const vesc = t => String(t||'').replace(/\\/g,'\\\\').replace(/[,;]/g, m => '\\' + m).replace(/\n/g,' ');
+  const tag = cfg.marca ? `Cliente ${cfg.marca}` : 'Cliente';
+  const cards = list.map(c => { const fn = `${c.nombre}${c.ciudad ? ' (' + c.ciudad + ')' : ''} – ${tag}`;
+    return ['BEGIN:VCARD','VERSION:3.0',`FN:${vesc(fn)}`,`N:${vesc(fn)};;;;`,`TEL;TYPE=CELL:+${phoneWA(c.cel)}`, cfg.marca ? `ORG:${vesc(cfg.marca)}` : '', `NOTE:${vesc([c.ci && 'C.I. ' + c.ci, countOf(c.id) + ' pedidos'].filter(Boolean).join(' · '))}`,'END:VCARD'].filter(Boolean).join('\r\n'); }).join('\r\n');
+  const blob = new Blob([cards + '\r\n'], {type:'text/vcard'}); const name = `Clientes_${(cfg.marca || 'tienda').replace(/\W+/g,'')}.vcf`;
+  sheet(`<h3>Guardar en contactos</h3><p style="margin:0">Se guardarán <b>${list.length}</b> clientes en los contactos de tu celular, por ejemplo <b>“${esc(list[0].nombre)}${list[0].ciudad ? ' (' + esc(list[0].ciudad) + ')' : ''} – ${esc(tag)}”</b>. Así aparecen con su nombre en WhatsApp y WhatsApp Business.</p>
+  <p class="hint" style="margin:0">Toca el botón y elige <b>Contactos</b>. Si se descarga como archivo, ábrelo desde la notificación o desde <b>Descargas</b> y elige <b>Importar</b>. Si alguno ya estaba guardado, el celular puede ofrecerte <b>combinar duplicados</b>.${clients.length - list.length ? `<br>${clients.length - list.length} clientes sin celular no se incluyen.` : ''}</p>
+  <button class="btn pri big block" id="vcGo">${I.users} Guardar contactos</button>`, sh => { $('#vcGo', sh).onclick = () => { shareOrDownload(blob, name); closeSheet(); }; });
 }
 function promoQueue(){
   let lvSel = 'vip';

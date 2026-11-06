@@ -1,4 +1,4 @@
-const CACHE = 'stylus-v2';
+const CACHE = 'stylus-v3';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './vendor/docx.umd.js',
   './img/logo.png', './img/i_user.png', './img/i_pin.png', './img/i_id.png', './img/i_tel.png',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-180.png', './icons/favicon.png'];

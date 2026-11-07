@@ -1,6 +1,5 @@
-// Conexión con la base de datos (Supabase).
-// Mientras estén vacíos, la tienda funciona en MODO DEMOSTRACIÓN con prendas de ejemplo.
+// Conexión con la base de datos (Supabase) — clave pública (publishable), segura para la web.
 window.STYLUS_CONFIG = {
-  url: '',
-  key: ''
+  url: 'https://uaevjeijemfaiexhbhkx.supabase.co',
+  key: 'sb_publishable_6MDIIa-Bfyx7OEC8MJXPJw_Hvm8ESP-'
 };

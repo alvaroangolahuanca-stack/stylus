@@ -1,4 +1,4 @@
-const CACHE = 'stylus-v3';
+const CACHE = 'stylus-v4';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './vendor/docx.umd.js',
   './img/logo.png', './img/i_user.png', './img/i_pin.png', './img/i_id.png', './img/i_tel.png',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-180.png', './icons/favicon.png'];
@@ -13,6 +13,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
   if (url.pathname.endsWith('revocados.json')) return;
+  if (url.pathname.includes('/tienda/')) return; // la tienda web no usa la caché de la app
   if (e.request.mode === 'navigate') {
     e.respondWith(fetch(e.request).then(r => { const cp = r.clone(); caches.open(CACHE).then(c => c.put('./index.html', cp)); return r; })
       .catch(() => caches.match('./index.html')));

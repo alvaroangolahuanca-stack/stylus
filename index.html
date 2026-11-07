@@ -166,7 +166,7 @@ h3{font:16px var(--display);text-transform:uppercase;letter-spacing:.6px}
    STYLUS — membretes de envío, clientes y guías por WhatsApp
    Datos guardados en el celular (IndexedDB).
    ========================================================= */
-const APP_VERSION = '1.0.2';
+const APP_VERSION = '1.1.0';
 const ADMIN_PUB = {kty:'EC',crv:'P-256',x:'4FQodfEaGt87OxQGmwuweN7UhL1yra0rtaM3065_pNU',y:'E4ckp3sAiVOfUVeKxXcGKJjg5U9CezfyCGq2MkF45GU',ext:true};
 const PER_SHEET = 8;
 
@@ -235,6 +235,7 @@ async function loadAll(){
   clients = await DB.get('kv', 'clients') || [];
   orders = await DB.get('kv', 'orders') || [];
   lic = await DB.get('kv', 'lic') || LSget('stylus_lic', null);
+  if(lic && lic.role !== 'owner' && cfg.marca === 'STYLUS' && cfg.logo === 'default' && !cfg.propia){ cfg.marca = ''; cfg.lema = ''; cfg.logo = ''; await saveCfg(); }
 }
 const saveCfg = () => DB.set('kv', 'cfg', cfg);
 const saveClients = () => DB.set('kv', 'clients', clients);
@@ -347,8 +348,25 @@ function parseClient(txt){
 
 /* ---------- Activación y códigos ---------- */
 async function pubKey(){ return crypto.subtle.importKey('jwk', ADMIN_PUB, {name:'ECDSA', namedCurve:'P-256'}, false, ['verify']); }
+/* Códigos cortos (verificados en línea) */
+const LIC_DB = {url:'https://uaevjeijemfaiexhbhkx.supabase.co', key:'sb_publishable_6MDIIa-Bfyx7OEC8MJXPJw_Hvm8ESP-'};
+const LIC_APP = 'stylus', LIC_PFX = 'STY';
+const SHORT_RE = /^[A-Z]{3}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+async function licRPC(fn, args){
+  let r; try{ r = await fetch(`${LIC_DB.url}/rest/v1/rpc/${fn}`, {method:'POST', headers:{'apikey':LIC_DB.key, 'Content-Type':'application/json'}, body:JSON.stringify(args)}); }
+  catch(e){ const er = new Error('Sin conexión a internet.'); er.offline = true; throw er; }
+  const j = await r.json().catch(() => null); if(!r.ok){ const er = new Error((j && (j.message || j.hint)) || ('Error ' + r.status)); er.offline = r.status >= 500; throw er; } return j;
+}
+function newShortCode(){ const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; const b = new Uint8Array(8); crypto.getRandomValues(b); const c = [...b].map(x => A[x % A.length]).join(''); return `${LIC_PFX}-${c.slice(0,4)}-${c.slice(4)}`; }
+const licMotivo = (m, v) => m === 'vencido' ? `Tu código venció${v ? ' el ' + String(v).split('-').reverse().join('/') : ''}. Pide la renovación al administrador.` : m === 'desactivado' ? 'Tu acceso fue desactivado por el administrador.' : 'Código incorrecto. Revisa que esté bien escrito.';
+async function verifyShort(code){
+  let r; try{ r = await licRPC('licencia_verificar', {p_codigo:code, p_app:LIC_APP}); }catch(e){ throw new Error(e.offline ? 'Necesitas internet para activar tu código. Conéctate e intenta de nuevo.' : 'No se pudo verificar el código: ' + e.message); }
+  if(!r || !r.ok) throw new Error(licMotivo(r && r.motivo, r && r.vence));
+  return {role:'user', id:code, name:r.nombre || 'Usuario', exp:r.vence ? r.vence.replace(/-/g,'') : '0', plan:r.plan || '', code, short:true};
+}
 async function verifyCode(code){
-  code = String(code||'').trim(); const m = code.match(/#c=([^&\s]+)/); if(m) code = m[1]; code = code.replace(/\s+/g,'');
+  code = String(code||'').trim(); const m = code.match(/#c=([^&\s]+)/); if(m) code = decodeURIComponent(m[1]); code = code.replace(/\s+/g,'');
+  if(SHORT_RE.test(code.toUpperCase())) return verifyShort(code.toUpperCase());
   const [p, s] = code.split('.'); if(!p || !s) throw new Error('El código no tiene el formato correcto.');
   let ok = false; try{ ok = await crypto.subtle.verify({name:'ECDSA', hash:'SHA-256'}, await pubKey(), ub64u(s), ub64u(p)); }catch(e){ ok = false; }
   if(!ok) throw new Error('Código inválido. Pide un código nuevo al administrador.');
@@ -371,7 +389,9 @@ async function makeCode(name, exp, plan){
 }
 async function checkLicense(){
   if(!lic) return false;
-  try{ if(lic.role === 'owner') await verifyMaster(lic.key); else { const v = await verifyCode(lic.code); lic.exp = v.exp; } }
+  try{ if(lic.role === 'owner') await verifyMaster(lic.key);
+    else if(lic.short){ try{ const r = await licRPC('licencia_verificar', {p_codigo:lic.code, p_app:LIC_APP}); if(r && !r.ok) throw new Error(licMotivo(r.motivo, r.vence)); if(r && r.ok){ lic.exp = r.vence ? r.vence.replace(/-/g,'') : '0'; lic.plan = r.plan || lic.plan; lic.name = r.nombre || lic.name; saveLic(); } }catch(e){ if(e.offline) return true; throw e; } return true; }
+    else { const v = await verifyCode(lic.code); lic.exp = v.exp; } }
   catch(e){ lockout(e.message); return false; }
   try{ const r = await fetch('revocados.json', {cache:'no-store'}); if(r.ok){ const j = await r.json(); if((j.ids||[]).includes(lic.id)){ lockout('Tu acceso fue desactivado por el administrador.'); return false; } } }catch(e){}
   return true;
@@ -382,7 +402,7 @@ async function activate(v){
   const l = /^STY-ADMIN-/.test(v.trim()) ? await verifyMaster(v) : await verifyCode(v);
   const first = !(await DB.get('kv', 'cfg'));
   lic = l; saveLic(); lockMsg = '';
-  if(first && l.role !== 'owner'){ cfg.marca = ''; cfg.lema = ''; cfg.logo = ''; await saveCfg(); }
+  if(l.role !== 'owner' && (first || (cfg.marca === 'STYLUS' && cfg.logo === 'default' && !cfg.propia))){ cfg.marca = ''; cfg.lema = ''; cfg.logo = ''; await saveCfg(); }
   try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
   toast(l.role === 'owner' ? 'Bienvenido, administrador' : `Bienvenido(a), ${l.name}`);
   route = (l.role !== 'owner' && !cfg.marca) ? 'cfg' : 'nuevo'; render();
@@ -416,16 +436,16 @@ function go(r){ route = r; render(); window.scrollTo(0,0); }
 /* ---------- Bienvenida / activación ---------- */
 function vWelcome(){
   return `<main style="padding-top:calc(20px + env(safe-area-inset-top,0px))">
-  <section class="hero"><img src="img/logo-white.png" alt="STYLUS"><p>Membretes de envío, clientes frecuentes y guías por WhatsApp, desde tu celular.</p></section>
+  <section class="hero"><div style="width:84px;height:84px;border-radius:22px;background:#fff;color:#111;display:grid;place-items:center">${small(I.box, 46)}</div><h2 style="color:#fff">Membretes y pedidos</h2><p>Membretes de envío, clientes frecuentes y guías por WhatsApp, desde tu celular.</p></section>
   <button class="btn pri big block" onclick="go('activar')">${I.lock} Ingresar con mi código</button>
   ${installUI()}
-  <p class="hint" style="text-align:center">¿Quieres usar STYLUS en tu negocio? Pide tu código de acceso al administrador.<br>Versión ${APP_VERSION}</p></main>`;
+  <p class="hint" style="text-align:center">¿Quieres usar esta app en tu negocio? Pide tu código de acceso al administrador.<br>Versión ${APP_VERSION}</p></main>`;
 }
 function vActivar(){
   return `<main style="padding-top:calc(20px + env(safe-area-inset-top,0px))">
   <div class="row"><button class="btn sm ghost" onclick="lockMsg='';go('welcome')" aria-label="Volver">${I.left}</button><h2>Acceso</h2></div>
   ${lockMsg ? `<div class="banner">${esc(lockMsg)} Tus datos siguen guardados en este celular; al ingresar un código nuevo los recuperas.</div>` : ''}
-  <div class="field"><label for="acCode">Código de acceso</label><textarea id="acCode" placeholder="Pega aquí tu código o el enlace que te enviaron" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea></div>
+  <div class="field"><label for="acCode">Código de acceso</label><textarea id="acCode" placeholder="Escribe tu código (ej.: STY-7K2M-QX9P) o pega el enlace" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea></div>
   <button class="btn pri big block" id="acGo">${I.lock} Ingresar</button>
   <p class="hint" id="acErr" style="color:var(--bad);font-weight:700;margin:0"></p>
   <p class="hint">El administrador ingresa con su clave maestra (empieza con STY-ADMIN-).</p></main>`;
@@ -933,8 +953,8 @@ function vCfg(){
   const lg = logoSrc();
   return `<div class="row"><button class="btn sm ghost" onclick="go('mas')" aria-label="Volver">${I.left}</button><h2>Mi marca</h2></div>
   ${!cfg.marca ? `<div class="banner">Escribe el nombre de tu negocio y sube tu logo. Aparecerán en los membretes y mensajes.</div>` : ''}
-  ${f('gM', 'Nombre del negocio', cfg.marca, 'placeholder="Ej.: STYLUS"')}
-  ${f('gL', 'Frase o eslogan (opcional)', cfg.lema, 'placeholder="Ej.: Born to win"')}
+  ${f('gM', 'Nombre del negocio', cfg.marca, 'placeholder="Ej.: Moda Sofía"')}
+  ${f('gL', 'Frase o eslogan (opcional)', cfg.lema, 'placeholder="Ej.: Ropa con estilo"')}
   <div class="row"><div class="badge" style="width:84px;height:84px;background:#fff;border:1.5px dashed var(--line);padding:4px">${lg ? `<img src="${lg}" alt="" style="width:100%;height:100%;object-fit:contain">` : 'Sin logo'}</div>
   <div class="stack" style="flex:1"><b>Logo del membrete</b><span class="hint">Mejor en negro con fondo blanco o transparente.</span><div class="row"><label class="btn sm">Subir logo<input type="file" accept="image/*" hidden id="gLogo"></label>${cfg.logo ? '<button class="btn sm ghost" id="gLogoX">Quitar</button>' : ''}${cfg.logo !== 'default' && lic.role === 'owner' ? '<button class="btn sm ghost" id="gLogoD">Usar logo STYLUS</button>' : ''}</div></div></div>
   <h3>Numeración</h3>${f('gNum', 'Próximo N° de pedido', cfg.nextNum, 'type="number" min="1"')}
@@ -954,7 +974,7 @@ function bindCfg(){
   $('#gLogo').onchange = async e => { const f = e.target.files[0]; if(!f) return; readCfg(); cfg.logo = await logoFromFile(f); await saveCfg(); render(); toast('Logo actualizado'); };
   const x = $('#gLogoX'); if(x) x.onclick = async () => { readCfg(); cfg.logo = ''; await saveCfg(); render(); };
   const d = $('#gLogoD'); if(d) d.onclick = async () => { readCfg(); cfg.logo = 'default'; await saveCfg(); render(); };
-  $('#gSave').onclick = async () => { readCfg(); await saveCfg(); toast('Guardado'); go('mas'); };
+  $('#gSave').onclick = async () => { readCfg(); cfg.propia = true; await saveCfg(); toast('Guardado'); go('mas'); };
 }
 function vMsg(){
   const t = [['msgRec','Pedido recibido'],['msgEnv','Pedido enviado (con la guía)'],['msgEnt','Agradecimiento (entregado)'],['msgPromo','Promoción'],['msgDesc','Aviso de descuento (se agrega al “recibido”)']];
@@ -971,44 +991,63 @@ function bindMsg(){
 
 /* ---------- ADMINISTRADOR ---------- */
 function addDays(n){ const d = new Date(); d.setDate(d.getDate() + n); return ymd(d); }
+const masterStr = () => 'STY-ADMIN-' + lic.key;
+let admList = null, admErr = '';
 function vAdm(){
-  const issued = LSget('stylus_issued', []);
+  const old = LSget('stylus_issued', []);
   return `<div class="row"><button class="btn sm ghost" onclick="go('mas')" aria-label="Volver">${I.left}</button><h2>Administrador</h2></div>
-  <div class="card soft"><span class="hint">Crea un código para cada negocio que compre STYLUS. Cada uno tendrá su propio espacio con su logo, sus clientes y sus pedidos. Al vencer, la app le pedirá un código nuevo; sus datos no se pierden.</span></div>
+  <div class="card soft"><span class="hint">Crea un código corto para cada negocio (ej.: <b>STY-7K2M-QX9P</b>). Empieza con la app en blanco para poner su marca. Al vencer, renuevas el mismo código; sus datos no se pierden.</span></div>
   <div class="field"><label for="aN">Nombre del negocio o persona</label><input id="aN" placeholder="Ej.: Tienda Moda Sofía"></div>
   <div class="chips"><button class="chip on" data-plan="M">Mensual (30 días)</button><button class="chip" data-plan="A">Anual (365 días)</button></div>
   <div class="field"><label for="aE">Válido hasta</label><input id="aE" type="date" value="${addDays(30)}"></div>
   <button class="btn pri big block" id="aGen">${I.plus} Crear código</button>
   <div id="aOut"></div>
-  <h3>Códigos entregados</h3>
-  ${issued.length ? `<div class="list">${issued.slice().reverse().map(c => { const venc = c.exp && c.exp < today(); return `<div class="item" style="cursor:default"><div class="nm"><b>${esc(c.name)}</b><small>${c.plan === 'A' ? 'Anual' : 'Mensual'} · hasta ${esc(c.exp)}${venc ? ' · <b style="color:var(--bad)">vencido</b>' : ''}${c.rev ? ' · <b style="color:var(--bad)">desactivado</b>' : ''}</small></div><button class="btn sm" data-ren="${c.id}">Renovar</button><button class="btn sm ghost" data-sh="${c.id}">Enviar</button></div>`; }).join('')}</div>` : '<p class="hint" style="margin:0">Aún no creaste códigos.</p>'}
-  ${issued.some(c => !c.rev) ? '<button class="btn sm ghost" id="aRevList">Desactivar un código antes de su vencimiento</button>' : ''}<div id="revBox"></div>`;
+  <h3>Códigos entregados</h3><div id="aList"><p class="hint" style="margin:0">Cargando…</p></div>
+  ${old.length ? `<details><summary class="hint" style="cursor:pointer;font-weight:700">Códigos antiguos (largos) · ${old.length}</summary><div class="list" style="margin-top:8px">${old.slice().reverse().map(c => `<div class="item" style="cursor:default"><div class="nm"><b>${esc(c.name)}</b><small>hasta ${esc(c.exp)}${c.rev ? ' · desactivado' : ''}</small></div><button class="btn sm ghost" data-sh="${c.id}">Enviar</button>${c.rev ? '' : `<button class="btn sm ghost" data-rev="${c.id}">Desactivar</button>`}</div>`).join('')}</div></details><div id="revBox"></div>` : ''}`;
 }
+function drawAdmList(){
+  const box = $('#aList'); if(!box) return; const t = today();
+  if(admErr){ box.innerHTML = `<p class="hint" style="margin:0;color:var(--bad);font-weight:700">${esc(admErr)}</p>`; return; }
+  if(!admList || !admList.length){ box.innerHTML = '<p class="hint" style="margin:0">Aún no creaste códigos cortos.</p>'; return; }
+  box.innerHTML = `<div class="list">${admList.map(c => { const venc = c.vence && c.vence < t; const st = !c.activo ? '<b style="color:var(--bad)">desactivado</b>' : venc ? '<b style="color:var(--bad)">vencido</b>' : c.usado ? '<b style="color:var(--ok)">en uso</b>' : 'sin usar';
+    return `<div class="item" style="cursor:default;flex-wrap:wrap"><div class="nm" style="min-width:170px"><b>${esc(c.nombre || '')}</b><small><span style="font-family:ui-monospace,monospace;font-weight:800">${esc(c.codigo)}</span> · ${c.plan === 'A' ? 'Anual' : 'Mensual'} · hasta ${esc(c.vence ? c.vence.split('-').reverse().join('/') : 'sin límite')} · ${st}</small></div>
+    <div class="row" style="gap:6px"><button class="btn sm" data-sc="${esc(c.codigo)}">Enviar</button><button class="btn sm ghost" data-ren="${esc(c.codigo)}">Renovar</button><button class="btn sm ghost" data-tg="${esc(c.codigo)}">${c.activo ? 'Desactivar' : 'Activar'}</button></div></div>`; }).join('')}</div>`;
+  $$('[data-sc]', box).forEach(b => b.onclick = () => { const c = admList.find(x => x.codigo === b.dataset.sc); showCode({name:c.nombre, code:c.codigo, exp:c.vence || '', plan:c.plan}); });
+  $$('[data-tg]', box).forEach(b => b.onclick = async () => { const c = admList.find(x => x.codigo === b.dataset.tg);
+    try{ await licRPC('licencia_cambiar', {p_app:LIC_APP, p_maestra:masterStr(), p_codigo:c.codigo, p_activo:!c.activo, p_vence:null, p_plan:null}); toast(c.activo ? 'Código desactivado: se bloquea al abrir la app con internet' : 'Código activado'); loadAdmList(); }catch(e){ toast('No se pudo cambiar: ' + e.message); } });
+  $$('[data-ren]', box).forEach(b => b.onclick = () => { const c = admList.find(x => x.codigo === b.dataset.ren); const base = c.vence && c.vence > t ? c.vence : t;
+    const plus = (d, n) => { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + n); return ymd(x); };
+    sheet(`<h3>Renovar código</h3><p style="margin:0"><b>${esc(c.nombre || '')}</b> · ${esc(c.codigo)}</p><div class="chips"><button class="chip on" data-rp="M">+1 mes</button><button class="chip" data-rp="A">+1 año</button></div><div class="field"><label for="rnD">Nueva fecha de vencimiento</label><input id="rnD" type="date" value="${plus(base, 30)}"></div><button class="btn pri block" id="rnGo">Renovar</button>`, sh => {
+      let pl = 'M'; $$('[data-rp]', sh).forEach(x => x.onclick = () => { pl = x.dataset.rp; $$('[data-rp]', sh).forEach(y => y.classList.toggle('on', y === x)); $('#rnD', sh).value = plus(base, pl === 'A' ? 365 : 30); });
+      $('#rnGo', sh).onclick = async () => { try{ await licRPC('licencia_cambiar', {p_app:LIC_APP, p_maestra:masterStr(), p_codigo:c.codigo, p_activo:true, p_vence:$('#rnD', sh).value || null, p_plan:pl}); closeSheet(); toast('Código renovado'); loadAdmList(); }catch(e){ toast('No se pudo renovar: ' + e.message); } };
+    }); });
+}
+async function loadAdmList(){ try{ admList = await licRPC('licencia_listar', {p_app:LIC_APP, p_maestra:masterStr()}); admErr = ''; }catch(e){ admErr = e.offline ? 'Sin conexión: no se puede mostrar la lista ahora.' : 'No se pudo cargar la lista: ' + e.message; } drawAdmList(); }
 function bindAdm(){
-  let plan = 'M';
+  let plan = 'M'; loadAdmList();
   $$('[data-plan]').forEach(b => b.onclick = () => { plan = b.dataset.plan; $$('[data-plan]').forEach(x => x.classList.toggle('on', x === b)); $('#aE').value = addDays(plan === 'A' ? 365 : 30); });
-  $('#aGen').onclick = async () => { const name = $('#aN').value.trim(); if(!name){ toast('Escribe el nombre'); return; }
-    try{ const {id, code} = await makeCode(name, $('#aE').value, plan); const is = LSget('stylus_issued', []); const rec = {id, name, exp:$('#aE').value, plan, code, date:today()}; is.push(rec); LSset('stylus_issued', is); render(); showCode(rec); }catch(e){ toast('No se pudo crear el código'); } };
+  $('#aGen').onclick = async () => { const name = $('#aN').value.trim(); if(!name){ toast('Escribe el nombre'); return; } const exp = $('#aE').value; const btn = $('#aGen'); btn.disabled = true;
+    try{ let code; for(let i = 0; i < 3; i++){ code = newShortCode(); try{ await licRPC('licencia_crear', {p_app:LIC_APP, p_maestra:masterStr(), p_codigo:code, p_nombre:name, p_plan:plan, p_vence:exp || null}); break; }catch(e){ if(e.offline || i === 2 || !/duplicate|unique/i.test(e.message)) throw e; } }
+      $('#aN').value = ''; showCode({name, code, exp, plan}); loadAdmList(); }
+    catch(e){
+      if(e.offline){ try{ const {id, code} = await makeCode(name, exp, plan); const is = LSget('stylus_issued', []); const rec = {id, name, exp, plan, code, date:today()}; is.push(rec); LSset('stylus_issued', is); showCode(rec); toast('Sin internet: se creó un código largo que funciona igual'); }catch(_){ toast('No se pudo crear el código'); } }
+      else toast('No se pudo crear el código: ' + e.message);
+    }
+    btn.disabled = false; };
   $$('[data-sh]').forEach(b => b.onclick = () => showCode(LSget('stylus_issued', []).find(c => c.id === b.dataset.sh)));
-  $$('[data-ren]').forEach(b => b.onclick = () => { const c = LSget('stylus_issued', []).find(x => x.id === b.dataset.ren); $('#aN').value = c.name; $('#aN').scrollIntoView({behavior:'smooth', block:'center'}); toast('Elige el plan y toca Crear código'); });
-  const rl = $('#aRevList'); if(rl) rl.onclick = () => {
-    const is = LSget('stylus_issued', []).filter(c => !c.rev);
-    sheet(`<h3>Desactivar código</h3><div class="list">${is.map(c => `<div class="item" data-r="${c.id}"><div class="nm"><b>${esc(c.name)}</b><small>hasta ${esc(c.exp)}</small></div></div>`).join('')}</div>`, s => {
-      $$('[data-r]', s).forEach(el => el.onclick = () => { const all = LSget('stylus_issued', []); all.forEach(c => { if(c.id === el.dataset.r) c.rev = true; }); LSset('stylus_issued', all); closeSheet(); render(); showRevoked(); });
-    });
-  };
+  $$('[data-rev]').forEach(b => b.onclick = () => { const all = LSget('stylus_issued', []); all.forEach(c => { if(c.id === b.dataset.rev) c.rev = true; }); LSset('stylus_issued', all); render(); showRevoked(); });
 }
 function showCode(c){
-  const link = baseURL() + '#c=' + c.code;
-  const msg = `Hola ${c.name} 👋 Aquí tienes tu acceso a *STYLUS*, la app para membretes de envío, clientes y guías por WhatsApp.\n\n1) Abre este enlace en tu celular (se activa solo):\n${link}\n\n2) Instálala: menú ⋮ → “Instalar aplicación” (Android) o Compartir → “Agregar a inicio” (iPhone).\n\nPlan ${c.plan === 'A' ? 'anual' : 'mensual'}, válido hasta el ${c.exp.split('-').reverse().join('/')}. Este acceso es personal.`;
+  const link = baseURL() + '#c=' + c.code; const short = SHORT_RE.test(c.code);
+  const msg = `Hola ${c.name} 👋 Aquí tienes tu acceso a la app de *membretes, clientes y guías por WhatsApp*.\n\n1) Abre este enlace en tu celular (se activa solo):\n${link}\n${short ? `\nO entra a ${baseURL()} → "Ingresar con mi código" y escribe: *${c.code}*\n` : ''}\n2) Instálala: menú ⋮ → “Instalar aplicación” (Android) o Compartir → “Agregar a inicio” (iPhone).\n\nPlan ${c.plan === 'A' ? 'anual' : 'mensual'}${c.exp ? `, válido hasta el ${c.exp.split('-').reverse().join('/')}` : ''}. Este acceso es personal.`;
   const out = $('#aOut'); if(!out) return;
-  out.innerHTML = `<div class="card stack"><b>Código de ${esc(c.name)}</b><div class="code">${esc(c.code)}</div><div class="grid2"><button class="btn wa" id="cWA">${I.wa} Enviar</button><button class="btn" id="cCp">Copiar enlace</button></div></div>`;
-  $('#cWA').onclick = () => openWA('', msg); $('#cCp').onclick = () => copyText(link);
+  out.innerHTML = `<div class="card stack"><b>Código de ${esc(c.name)}</b><div class="code" style="${short ? 'font-size:24px;text-align:center;letter-spacing:2px;font-weight:800' : ''}">${esc(c.code)}</div><div class="grid2"><button class="btn wa" id="cWA">${I.wa} Enviar</button><button class="btn" id="cCp">Copiar código</button></div></div>`;
+  $('#cWA').onclick = () => openWA('', msg); $('#cCp').onclick = () => copyText(c.code);
   out.scrollIntoView({behavior:'smooth', block:'center'});
 }
 function showRevoked(){
   const json = JSON.stringify({ids:LSget('stylus_issued', []).filter(c => c.rev).map(c => c.id)}); const box = $('#revBox'); if(!box) return;
-  box.innerHTML = `<div class="card stack"><b>Último paso</b><span class="hint">Envíame este texto (o reemplaza con él el archivo <b>revocados.json</b> del sitio). La app de ese negocio se bloqueará la próxima vez que se abra con internet.</span><div class="code">${esc(json)}</div><button class="btn" id="rvCp">Copiar</button></div>`;
+  box.innerHTML = `<div class="card stack"><b>Último paso</b><span class="hint">Envíame este texto para actualizar el archivo revocados.json del sitio.</span><div class="code">${esc(json)}</div><button class="btn" id="rvCp">Copiar</button></div>`;
   $('#rvCp').onclick = () => copyText(json);
 }
 

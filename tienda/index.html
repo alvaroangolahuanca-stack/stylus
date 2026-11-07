@@ -75,8 +75,13 @@ nav.desk a:hover,nav.desk a.on{border-color:var(--ink)}
 .link{background:none;border:0;padding:0;font-weight:800;text-decoration:underline;text-underline-offset:4px;cursor:pointer;text-transform:uppercase;font-size:13px;letter-spacing:1px}
 
 /* Portada */
-.hero{background:var(--ink);color:#fff;position:relative;overflow:hidden}
-.hero .in{display:grid;gap:22px;padding-block:34px 30px}
+.hero{background:var(--ink);color:#fff;position:relative;overflow:hidden;min-height:calc(100vh - var(--topH,96px));display:flex;align-items:center}
+@supports (height:100svh){.hero{min-height:calc(100svh - var(--topH,96px))}}
+.hero>.in{width:100%}
+.cue{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:none;border:0;color:#fff;display:flex;flex-direction:column;align-items:center;gap:2px;font-weight:800;font-size:11.5px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;opacity:.85;animation:cue 1.8s ease-in-out infinite}
+.cue svg{width:26px;height:26px}
+@keyframes cue{50%{transform:translate(-50%,6px)}}
+.hero .in{display:grid;gap:22px;padding-block:28px 64px}
 .hero h1{font-size:clamp(52px,15vw,132px);letter-spacing:-1px}
 .hero h1 em{font-style:normal;-webkit-text-stroke:2px #fff;color:transparent}
 .hero p{margin:0;max-width:34ch;color:#d9d6cf;font-size:17px}
@@ -85,7 +90,7 @@ nav.desk a:hover,nav.desk a.on{border-color:var(--ink)}
 .hero .strip a{aspect-ratio:4/5;border-radius:14px;overflow:hidden;background:#222;display:block}
 .hero .strip img{width:100%;height:100%;object-fit:cover;transition:transform .5s}
 .hero .strip a:hover img{transform:scale(1.05)}
-@media (min-width:900px){.hero .in{grid-template-columns:1.1fr 1fr;align-items:end;padding-block:64px 56px}}
+@media (min-width:900px){.hero .in{grid-template-columns:1.1fr 1fr;align-items:center;padding-block:48px 80px}}
 .stories{display:flex;gap:14px;overflow-x:auto;padding:18px var(--gutR) 6px var(--gut);scrollbar-width:none;max-width:1180px;margin:0 auto}
 .stories::-webkit-scrollbar{display:none}
 .story{flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;width:76px;text-align:center}
@@ -343,7 +348,7 @@ const GEN = {hombre:'Hombre', mujer:'Mujer', unisex:'Unisex'};
 const TALLAS = ['XS','S','M','L','XL','XXL','XXXL'];
 const CIUDADES = ['La Paz','El Alto','Cochabamba','Santa Cruz','Oruro','Potosí','Sucre','Tarija','Trinidad','Cobija','Quillacollo','Sacaba','Montero','Warnes','Yacuiba','Riberalta','Uyuni','Villazón','Tupiza','Llallagua','Huanuni','Challapata','Caracollo','Viacha','Camiri','Bermejo','Villamontes','Guayaramerín','Punata','Copacabana','Caranavi'];
 const DEFAULT_SET = {whatsapp:'59174126858', ciudad:'Oruro', instagram:'', tiktok:'', qr:'img/qr-yasta.jpg', qr_vence:'2026-12-07', titular:'Marcelo Angola Cuenca', banco:'Yasta – Banco Unión',
-  anuncio:'ENVÍOS A TODA BOLIVIA POR FLOTA · PIEZAS ÚNICAS · PAGO CON QR', drop_fecha:null, drop_texto:'Nuevo drop', reserva_horas:2,
+  anuncio:'ENVÍOS A TODA BOLIVIA POR FLOTA · PIEZAS ÚNICAS · PAGO CON QR', drop_fecha:null, drop_texto:'Nuevo drop', reserva_min:5,
   envio_texto:'Enviamos a toda Bolivia por flota. El envío es por cobrar: lo pagas al recoger tu paquete. Despachamos en 1 día hábil después de confirmar tu pago.',
   cambios_texto:'Revisa bien las fotos y medidas: cada prenda es única. Solo aceptamos cambios en casos excepcionales (por ejemplo, si la prenda no coincide con la descripción). Escríbenos por WhatsApp dentro de las 48 horas de recibirla.'};
 
@@ -424,7 +429,7 @@ function demoAPI(){
     async settings(){ return db().settings; },
     async createOrder(pids, d){ await wait(); const x = db(); const ps = x.products.filter(p => pids.includes(p.id));
       if(ps.length !== pids.length || ps.some(p => !isAvail(p))) throw new Error('NO_DISPONIBLE');
-      const vence = new Date(Date.now() + (x.settings.reserva_horas || 2) * 3600e3).toISOString(); const codigo = 'STY-' + String(++x.n).padStart(4, '0');
+      const vence = new Date(Date.now() + (x.settings.reserva_min || 5) * 6e4).toISOString(); const codigo = 'STY-' + String(++x.n).padStart(4, '0');
       ps.forEach(p => { p.status = 'reservado'; p.reservado_hasta = vence; p.pedido = codigo; });
       const items = ps.map(p => ({id:p.id, titulo:p.titulo, talla:p.talla, precio:p.precio, foto:p.fotos[0]})); const total = ps.reduce((a, p) => a + Number(p.precio), 0);
       x.orders.unshift({id:'o' + Date.now(), codigo, creado:new Date().toISOString(), ...d, items, total, status:'pendiente'}); save(x); return {codigo, total, items, vence}; },
@@ -474,6 +479,8 @@ function chrome(){
 }
 function qrDaysLeft(){ if(!S.qr_vence) return null; const v = new Date(S.qr_vence + 'T23:59:59'); return Math.floor((v - new Date()) / 864e5); }
 const qrExpired = () => { const d = qrDaysLeft(); return d !== null && d < 0; };
+function setTopH(){ const h = (!$('#demoBar').hidden ? $('#demoBar').offsetHeight : 0) + (!$('#ticker').hidden ? $('#ticker').offsetHeight : 0) + $('header.top').offsetHeight; document.documentElement.style.setProperty('--topH', h + 'px'); }
+window.addEventListener('resize', () => setTopH());
 const fmtTel = t => { const d = digits(t).replace(/^591/, ''); return d.length === 8 ? d.replace(/(\d{4})(\d{4})/, '$1 $2') : d; };
 
 /* ---------- Tarjeta de prenda ---------- */
@@ -509,8 +516,9 @@ function vHome(){
     <div style="display:grid;gap:18px"><span class="eyebrow" style="color:#bdb8ae">Chaquetas vintage · Oruro, Bolivia</span><h1>Born<br>to <em>win</em></h1>
     <p>Harrington, Retro, Track y Varsity seleccionadas a mano. Cada prenda es única: cuando se va, no vuelve.</p>
     <div class="ctas"><a class="btn white" href="#tienda">Ver la tienda</a><a class="btn out" style="color:#fff;border-color:#fff" href="#explorar">▶ Explorar</a></div></div>
-    <div class="strip">${feat.map(p => `<a href="#p/${p.id}" aria-label="${esc(p.titulo)}"><img src="${esc(cover(p))}" alt="${esc(p.titulo)}"></a>`).join('') || '<a></a><a></a><a></a>'}</div></div></section>
-  <div class="stories">${st('#tienda', 'Nuevos', firstOf(() => true), 'new')}${st('#tienda/hombre', 'Hombre', firstOf(p => p.genero === 'hombre'))}${st('#tienda/mujer', 'Mujer', firstOf(p => p.genero === 'mujer'))}${CATS.map(c => st('#tienda/' + c.k, c.t, firstOf(p => p.categoria === c.k))).join('')}${ofertas.length ? st('#tienda/ofertas', 'Ofertas', cover(ofertas[0]), 'new') : ''}</div>
+    <div class="strip">${feat.map(p => `<a href="#p/${p.id}" aria-label="${esc(p.titulo)}"><img src="${esc(cover(p))}" alt="${esc(p.titulo)}"></a>`).join('') || '<a></a><a></a><a></a>'}</div></div>
+    <button class="cue" id="cue" aria-label="Ver la colección">Ver la colección<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></section>
+  <div class="stories" id="afterHero">${st('#tienda', 'Nuevos', firstOf(() => true), 'new')}${st('#tienda/hombre', 'Hombre', firstOf(p => p.genero === 'hombre'))}${st('#tienda/mujer', 'Mujer', firstOf(p => p.genero === 'mujer'))}${CATS.map(c => st('#tienda/' + c.k, c.t, firstOf(p => p.categoria === c.k))).join('')}${ofertas.length ? st('#tienda/ofertas', 'Ofertas', cover(ofertas[0]), 'new') : ''}</div>
   ${drop ? `<section class="wrap blk" style="padding-bottom:0"><div class="drop"><span class="eyebrow" style="color:var(--gold)">${esc(S.drop_texto || 'Nuevo drop')}</span><h2 style="font-size:30px">Faltan</h2><div class="cd" id="cd"></div><span class="muted" style="color:#bdb8ae">${new Date(S.drop_fecha).toLocaleString('es-BO', {weekday:'long', day:'numeric', month:'long', hour:'2-digit', minute:'2-digit'})}</span></div></section>` : ''}
   <section class="wrap blk"><div class="shead"><div><span class="eyebrow">Recién llegados</span><h2>Nuevo ingreso</h2></div><a class="link" href="#tienda">Ver todo</a></div>
     ${!loaded ? '<p class="muted">Cargando prendas…</p>' : loadErr ? `<p class="err">${esc(loadErr)}</p>` : nuevos.length ? `<div class="rail">${nuevos.map(card).join('')}</div>` : `<div class="empty"><b>Muy pronto</b>Estamos preparando las primeras prendas. Síguenos para enterarte del primer drop.</div>`}</section>
@@ -522,17 +530,18 @@ function vHome(){
 }
 function stepsHTML(){
   return `<div class="steps"><div class="step"><b>Elige tu prenda</b><p>Revisa fotos y medidas reales. Agrégala al carrito.</p></div>
-  <div class="step"><b>Paga con QR</b><p>Escanea nuestro QR desde cualquier banco o billetera y pon tu código de pedido en la glosa.</p></div>
+  <div class="step"><b>Paga con QR</b><p>Escanea nuestro QR desde cualquier banco o billetera y paga el monto exacto.</p></div>
   <div class="step"><b>Envía tu comprobante</b><p>Un toque y se abre WhatsApp con tu pedido listo. Adjunta la captura del pago.</p></div>
   <div class="step"><b>Recíbela por flota</b><p>Despachamos en 1 día hábil a tu ciudad. El envío lo pagas al recoger.</p></div></div>`;
 }
 function perksHTML(){
   return `<div class="perks"><div class="perk">${I.truck}<div><b>Envíos a toda Bolivia</b><p>Por flota, envío por cobrar. Despacho en 1 día hábil.</p></div></div>
-  <div class="perk">${I.one}<div><b>Piezas únicas</b><p>Una sola unidad por prenda. Al pagar, la reservamos solo para ti.</p></div></div>
+  <div class="perk">${I.one}<div><b>Piezas únicas</b><p>Una sola unidad por prenda. Al confirmar tu pedido, la reservamos para ti mientras pagas.</p></div></div>
   <div class="perk">${I.qr}<div><b>Pago con QR</b><p>Desde cualquier banco o billetera móvil, sin comisiones.</p></div></div></div>`;
 }
 function bindHome(){
-  bindCards();
+  bindCards(); setTopH();
+  const cue = $('#cue'); if(cue) cue.onclick = () => { const a = $('#afterHero'); window.scrollTo({top:a.getBoundingClientRect().top + scrollY - $('header.top').offsetHeight, behavior:'smooth'}); };
   const cd = $('#cd'); if(cd){ const tick = () => { const ms = new Date(S.drop_fecha) - new Date(); if(ms <= 0){ cd.innerHTML = '<b style="font:24px var(--display)">¡Ya está aquí!</b>'; return; } const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60;
     cd.innerHTML = [[d, 'días'], [h, 'horas'], [m, 'min'], [s, 'seg']].map(([v, l]) => `<div><b class="num">${String(v).padStart(2, '0')}</b><small>${l}</small></div>`).join(''); }; tick(); clearInterval(window.__cd); window.__cd = setInterval(() => { if(!$('#cd')) return clearInterval(window.__cd); tick(); }, 1000); }
 }
@@ -690,7 +699,6 @@ function vCheckout(){
     <div class="field"><label for="cN">Nombre completo</label><input id="cN" autocomplete="name" value="${esc(d.nombre || '')}" required></div>
     <div class="two"><div class="field"><label for="cI">C.I.</label><input id="cI" value="${esc(d.ci || '')}" inputmode="text" required></div><div class="field"><label for="cT">Celular (WhatsApp)</label><input id="cT" value="${esc(d.cel || '')}" inputmode="tel" autocomplete="tel" placeholder="7xxxxxxx" required></div></div>
     <div class="field"><label for="cC">Ciudad de destino</label><input id="cC" list="dlC" value="${esc(d.ciudad || '')}" placeholder="Ej.: Cochabamba" required><datalist id="dlC">${CIUDADES.map(c => `<option value="${c}">`).join('')}</datalist></div>
-    <div class="field"><label for="cO">Nota (opcional)</label><textarea id="cO" placeholder="Ej.: prefiero flota Trans Copacabana">${esc(d.nota || '')}</textarea></div>
     <div class="note">${I.truck.replace('<svg', '<svg width="20" height="20" style="vertical-align:-4px;margin-right:6px"')}${esc(S.envio_texto)}</div>
     <p class="err" id="coErr">${esc(coErr)}</p>
     <button class="btn block" id="coGo" type="submit" ${coBusy ? 'disabled' : ''}>${coBusy ? 'Reservando…' : `Confirmar y pagar ${bs(total)}`}</button></form>
@@ -700,7 +708,7 @@ function vCheckout(){
 function bindCheckout(){
   const f = $('#coF'); if(!f) return;
   f.onsubmit = async e => {
-    e.preventDefault(); const d = {nombre:$('#cN').value.trim(), ci:$('#cI').value.trim(), cel:digits($('#cT').value).replace(/^591/, ''), ciudad:$('#cC').value.trim(), nota:$('#cO').value.trim()};
+    e.preventDefault(); const d = {nombre:$('#cN').value.trim(), ci:$('#cI').value.trim(), cel:digits($('#cT').value).replace(/^591/, ''), ciudad:$('#cC').value.trim(), nota:''};
     const err = !d.nombre || d.nombre.split(/\s+/).length < 2 ? 'Escribe tu nombre y apellido.' : !d.ci ? 'Escribe tu C.I.' : !/^[67]\d{7}$/.test(d.cel) ? 'Revisa tu celular: 8 dígitos que empiezan con 6 o 7.' : !d.ciudad ? 'Escribe tu ciudad de destino.' : '';
     if(err){ $('#coErr').textContent = err; return; }
     LS.set('stylus_buyer', d); coBusy = true; coErr = ''; $('#coGo').disabled = true; $('#coGo').textContent = 'Reservando…';
@@ -716,7 +724,7 @@ function bindCheckout(){
 }
 function orderMsg(o){
   const d = o.comprador || {};
-  return `🛍️ *PEDIDO ${o.codigo}* – STYLUS\nNombre: ${d.nombre}\nC.I.: ${d.ci}\nCelular: ${d.cel}\nCiudad: ${d.ciudad}\n—\n${(o.items || []).map(i => `• ${i.titulo} (Talla ${i.talla || '–'}) – ${bs(i.precio)}`).join('\n')}\n*Total: ${bs(o.total)}*${d.nota ? `\nNota: ${d.nota}` : ''}\n\n✅ Ya pagué con QR. Adjunto mi comprobante.`;
+  return `🛍️ *PEDIDO ${o.codigo}* – STYLUS\nNombre: ${d.nombre}\nC.I.: ${d.ci}\nCelular: ${d.cel}\nCiudad: ${d.ciudad}\n—\n${(o.items || []).map(i => `• ${i.titulo} (Talla ${i.talla || '–'}) – ${bs(i.precio)}`).join('\n')}\n*Total: ${bs(o.total)}*\n\n✅ Ya pagué con QR. Adjunto mi comprobante.`;
 }
 function vOrder(){
   const o = LS.get('stylus_order', null);
@@ -727,7 +735,7 @@ function vOrder(){
     <div class="qr">${S.qr && !qrExpired() ? `<img src="${esc(S.qr)}" alt="QR de pago STYLUS">` : S.qr ? `<span class="muted" style="padding:20px">Estamos renovando nuestro QR. Toca el botón verde y te lo enviamos por WhatsApp al instante.</span>` : `<span class="muted" style="padding:20px">${DEMO ? 'Aquí aparecerá el QR de Yasta – Banco Unión (modo demostración).' : 'El QR de pago aún no fue cargado. Escríbenos por WhatsApp y te lo enviamos.'}</span>`}</div>
     <span class="muted" style="font-size:14px">A nombre de <b>${esc(S.titular)}</b> · ${esc(S.banco)}</span>
     ${S.qr && !qrExpired() ? `<button class="btn out sm" id="qDl">Guardar QR en mi galería</button>` : ''}
-    <ol class="how"><li>Abre la app de tu banco o billetera y elige <b>Pagar con QR</b>.</li><li>Escanea el QR (o súbelo desde tu galería) y paga <b>${bs(o.total)}</b>.</li><li>En la glosa o descripción escribe <b>${esc(o.codigo)}</b>.</li><li>Toca el botón verde y <b>adjunta la captura</b> de tu comprobante en WhatsApp.</li></ol>
+    <ol class="how"><li>Abre la app de tu banco o billetera y elige <b>Pagar con QR</b>.</li><li>Escanea el QR (o súbelo desde tu galería) y paga <b>${bs(o.total)}</b>.</li><li>Toca el botón verde y <b>adjunta la captura</b> de tu comprobante en WhatsApp.</li></ol>
     <a class="btn wa block" id="oWA" href="${waLink(orderMsg(o))}" target="_blank" rel="noopener">${I.wa} Enviar comprobante por WhatsApp</a>
     <p class="muted" style="margin:0;font-size:14px">Tus prendas están reservadas por <span class="timer" id="tmr">—</span>. Si no recibimos el pago, vuelven a la tienda.</p></div>
   <div class="box"><h3 style="font-size:20px">Tu pedido</h3>${(o.items || []).map(i => `<div class="citem"><img src="${esc(i.foto || 'img/icon-512.png')}" alt=""><div><b>${esc(i.titulo)}</b><span class="muted" style="font-size:13px">Talla ${esc(i.talla || '–')}</span></div><b class="num">${bs(i.precio)}</b></div>`).join('')}
@@ -735,7 +743,7 @@ function vOrder(){
 }
 function bindOrder(){
   const o = LS.get('stylus_order', null); if(!o) return;
-  const t = $('#tmr'); const tick = () => { const ms = new Date(o.vence) - new Date(); if(!t || !document.body.contains(t)) return clearInterval(window.__tm); if(ms <= 0){ t.textContent = '0:00 (vencida)'; return; } const h = Math.floor(ms / 36e5), m = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60; t.textContent = `${h ? h + ' h ' : ''}${String(m).padStart(2, '0')} min ${String(s).padStart(2, '0')} s`; };
+  const t = $('#tmr'); const tick = () => { const ms = new Date(o.vence) - new Date(); if(!t || !document.body.contains(t)) return clearInterval(window.__tm); if(ms <= 0){ t.closest('p').innerHTML = '<b>Se terminó el tiempo de reserva.</b> Si ya pagaste, igual envíanos tu comprobante y te confirmamos. Si no, tus prendas pueden volver a la tienda.'; clearInterval(window.__tm); return; } const h = Math.floor(ms / 36e5), m = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60; t.textContent = `${h ? h + ' h ' : ''}${String(m).padStart(2, '0')} min ${String(s).padStart(2, '0')} s`; };
   tick(); clearInterval(window.__tm); window.__tm = setInterval(tick, 1000);
   const q = $('#qDl'); if(q) q.onclick = async () => { try{ const b = await (await fetch(S.qr)).blob(); const f = new File([b], 'QR_STYLUS.png', {type:b.type || 'image/png'}); if(navigator.canShare && navigator.canShare({files:[f]})){ await navigator.share({files:[f]}); return; } const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'QR_STYLUS.png'; a.click(); }catch(e){ window.open(S.qr, '_blank'); } };
 }
@@ -745,7 +753,7 @@ function vHelp(){
   return `<div class="wrap ctop"><span class="eyebrow">Preguntas frecuentes</span><h1>Cómo comprar</h1></div>
   <section class="wrap" style="display:grid;gap:22px;padding-block:14px 40px">${stepsHTML()}
   <div class="box"><h3 style="font-size:22px">Envíos</h3><p style="margin:0">${esc(S.envio_texto)}</p></div>
-  <div class="box"><h3 style="font-size:22px">Pagos</h3><p style="margin:0">Pagas con el QR de <b>${esc(S.banco)}</b> a nombre de <b>${esc(S.titular)}</b>, desde cualquier banco o billetera móvil de Bolivia. Al confirmar tu pedido te damos un código (ej.: STY-0012): escríbelo en la glosa y envíanos la captura por WhatsApp.</p></div>
+  <div class="box"><h3 style="font-size:22px">Pagos</h3><p style="margin:0">Pagas con el QR de <b>${esc(S.banco)}</b> a nombre de <b>${esc(S.titular)}</b>, desde cualquier banco o billetera móvil de Bolivia. Al confirmar tu pedido te mostramos el QR con el monto exacto; paga y envíanos la captura por WhatsApp.</p></div>
   <div class="box"><h3 style="font-size:22px">Cambios y devoluciones</h3><p style="margin:0">${esc(S.cambios_texto)}</p></div>
   <div class="box"><h3 style="font-size:22px">¿Cómo saber si me queda?</h3><p style="margin:0">Cada prenda trae sus <b>medidas reales en centímetros</b>. Toma una chaqueta tuya, extiéndela en una mesa y compara el ancho de axila a axila y el largo. Si tienes dudas, escríbenos.</p></div>
   <a class="btn wa" href="${waLink('¡Hola STYLUS! 👋 Tengo una consulta.')}" target="_blank" rel="noopener">${I.wa} Escríbenos por WhatsApp</a></section>`;
@@ -787,7 +795,7 @@ async function vAdmin(sub){
     const dl = S.drop_fecha ? new Date(new Date(S.drop_fecha).getTime() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 16) : '';
     body = `<form class="box form" id="sF"><h3 style="font-size:20px">Contacto y redes</h3>${f('sW', 'WhatsApp de la tienda', fmtTel(S.whatsapp), 'tel')}<div class="two">${f('sIg', 'Instagram (usuario)', S.instagram, 'text', 'stylus.bo')}${f('sTk', 'TikTok (usuario)', S.tiktok, 'text', 'stylus.bo')}</div>${f('sCi', 'Ciudad', S.ciudad)}
     <h3 style="font-size:20px">Pago con QR</h3><div style="display:flex;gap:12px;align-items:center"><div class="qr" style="width:120px;padding:6px">${S.qr ? `<img src="${esc(S.qr)}" alt="QR">` : '<span class="muted" style="font-size:12px;text-align:center">Sin QR</span>'}</div><div style="display:grid;gap:8px"><label class="btn out sm">Subir imagen del QR<input type="file" accept="image/*" id="sQr" hidden></label><span class="muted" style="font-size:13px">En la app Yasta: Cobrar → QR → Compartir / Guardar imagen.</span></div></div>
-    <div class="two">${f('sTi', 'Titular', S.titular)}${f('sBa', 'Banco / billetera', S.banco)}</div><div class="two">${f('sQv', 'El QR vence el', S.qr_vence || '', 'date')}${f('sRh', 'Horas de reserva sin pago', S.reserva_horas, 'number')}</div><span class="muted" style="font-size:13px">Al generar el QR en Yasta, elige la vigencia más larga posible y anota aquí la fecha de vencimiento.</span>
+    <div class="two">${f('sTi', 'Titular', S.titular)}${f('sBa', 'Banco / billetera', S.banco)}</div><div class="two">${f('sQv', 'El QR vence el', S.qr_vence || '', 'date')}${f('sRh', 'Minutos de reserva para pagar', S.reserva_min ?? 5, 'number')}</div><span class="muted" style="font-size:13px">Al generar el QR en Yasta, elige la vigencia más larga posible y anota aquí la fecha de vencimiento.</span>
     <h3 style="font-size:20px">Anuncios</h3>${f('sAn', 'Cinta superior (separa con ·)', S.anuncio)}<div class="two"><div class="field"><label for="sDf">Próximo drop</label><input id="sDf" type="datetime-local" value="${dl}"></div>${f('sDt', 'Texto del drop', S.drop_texto)}</div>
     <h3 style="font-size:20px">Textos</h3><div class="field"><label for="sEn">Envíos</label><textarea id="sEn">${esc(S.envio_texto)}</textarea></div><div class="field"><label for="sCa">Cambios y devoluciones</label><textarea id="sCa">${esc(S.cambios_texto)}</textarea></div>
     <button class="btn block" type="submit">Guardar ajustes</button></form>`;
@@ -857,7 +865,7 @@ function bindAdmin(){
   const sF = $('#sF'); if(sF){
     $('#sQr').onchange = async e => { const f = e.target.files[0]; if(!f) return; toast('Subiendo QR…'); try{ S.qr = await API.uploadPhoto(await compress(f)); await API.saveSettings(S); toast('QR guardado'); render(); }catch(ex){ toast('No se pudo subir el QR'); } };
     sF.onsubmit = async e => { e.preventDefault(); const v = id => $('#' + id).value.trim(); const w = digits(v('sW')); const df = v('sDf');
-      Object.assign(S, {whatsapp:w.length === 8 ? '591' + w : w, instagram:v('sIg').replace(/^@/, ''), tiktok:v('sTk').replace(/^@/, ''), ciudad:v('sCi'), titular:v('sTi'), banco:v('sBa'), qr_vence:v('sQv') || null, reserva_horas:Math.max(1, parseInt(v('sRh')) || 2), anuncio:v('sAn'), drop_fecha:df ? new Date(df).toISOString() : null, drop_texto:v('sDt'), envio_texto:v('sEn'), cambios_texto:v('sCa')});
+      Object.assign(S, {whatsapp:w.length === 8 ? '591' + w : w, instagram:v('sIg').replace(/^@/, ''), tiktok:v('sTk').replace(/^@/, ''), ciudad:v('sCi'), titular:v('sTi'), banco:v('sBa'), qr_vence:v('sQv') || null, reserva_min:Math.max(1, parseInt(v('sRh')) || 5), anuncio:v('sAn'), drop_fecha:df ? new Date(df).toISOString() : null, drop_texto:v('sDt'), envio_texto:v('sEn'), cambios_texto:v('sCa')});
       try{ await API.saveSettings(S); chrome(); toast('Ajustes guardados'); }catch(ex){ toast('No se pudo guardar: ' + ex.message); } };
   }
 }

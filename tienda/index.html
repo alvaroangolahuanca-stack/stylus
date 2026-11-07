@@ -342,7 +342,7 @@ const ESTADOS = {como_nuevo:'Como nueva', muy_bueno:'Muy buen estado', bueno:'Bu
 const GEN = {hombre:'Hombre', mujer:'Mujer', unisex:'Unisex'};
 const TALLAS = ['XS','S','M','L','XL','XXL','XXXL'];
 const CIUDADES = ['La Paz','El Alto','Cochabamba','Santa Cruz','Oruro','Potosí','Sucre','Tarija','Trinidad','Cobija','Quillacollo','Sacaba','Montero','Warnes','Yacuiba','Riberalta','Uyuni','Villazón','Tupiza','Llallagua','Huanuni','Challapata','Caracollo','Viacha','Camiri','Bermejo','Villamontes','Guayaramerín','Punata','Copacabana','Caranavi'];
-const DEFAULT_SET = {whatsapp:'59174126858', ciudad:'Oruro', instagram:'', tiktok:'', qr:'', titular:'Marcelo Angola Cuenca', banco:'Yasta – Banco Unión',
+const DEFAULT_SET = {whatsapp:'59174126858', ciudad:'Oruro', instagram:'', tiktok:'', qr:'img/qr-yasta.jpg', qr_vence:'2026-12-07', titular:'Marcelo Angola Cuenca', banco:'Yasta – Banco Unión',
   anuncio:'ENVÍOS A TODA BOLIVIA POR FLOTA · PIEZAS ÚNICAS · PAGO CON QR', drop_fecha:null, drop_texto:'Nuevo drop', reserva_horas:2,
   envio_texto:'Enviamos a toda Bolivia por flota. El envío es por cobrar: lo pagas al recoger tu paquete. Despachamos en 1 día hábil después de confirmar tu pago.',
   cambios_texto:'Revisa bien las fotos y medidas: cada prenda es única. Solo aceptamos cambios en casos excepcionales (por ejemplo, si la prenda no coincide con la descripción). Escríbenos por WhatsApp dentro de las 48 horas de recibirla.'};
@@ -416,7 +416,7 @@ function demoAPI(){
     return P.map((r, i) => ({id:'demo' + (i + 1), creado:new Date(t - i * 2.2 * 864e5).toISOString(), titulo:r[0], categoria:r[1], genero:r[2], talla:r[3], marca:r[4], estado:r[5], largo:r[6], ancho:r[7], manga:r[8], precio:r[9], precio_antes:r[10], destacado:r[11],
       descripcion:'Prenda seleccionada a mano, revisada y lista para usar. Las fotos de esta demostración son ilustraciones.', fotos:[`demo/p${i + 1}-1.jpg`, `demo/p${i + 1}-2.jpg`], status:i === 4 ? 'vendido' : 'disponible', reservado_hasta:null, publicar_desde:null}));
   };
-  const db = () => { let d = LS.get('stylus_demo_db', null); if(!d || d.v !== 2){ d = {v:2, products:seed(), orders:[], n:0, settings:{...DEFAULT_SET, instagram:'stylus.bo', tiktok:'stylus.bo', drop_fecha:new Date(Date.now() + 3 * 864e5 + 5 * 3600e3).toISOString()}}; LS.set('stylus_demo_db', d); } return d; };
+  const db = () => { let d = LS.get('stylus_demo_db', null); if(!d || d.v !== 3){ d = {v:3, products:seed(), orders:[], n:0, settings:{...DEFAULT_SET, instagram:'stylus.bo', tiktok:'stylus.bo', drop_fecha:new Date(Date.now() + 3 * 864e5 + 5 * 3600e3).toISOString()}}; LS.set('stylus_demo_db', d); } return d; };
   const save = d => LS.set('stylus_demo_db', d);
   const wait = (ms=250) => new Promise(r => setTimeout(r, ms));
   return {
@@ -472,6 +472,8 @@ function chrome(){
   <div><h4>Contacto</h4><a href="${waLink('¡Hola STYLUS! 👋')}" target="_blank" rel="noopener">WhatsApp ${esc(fmtTel(S.whatsapp))}</a>${ig ? `<a href="${ig}" target="_blank" rel="noopener">Instagram @${esc(S.instagram.replace(/^@/, ''))}</a>` : ''}${tk ? `<a href="${tk}" target="_blank" rel="noopener">TikTok @${esc(S.tiktok.replace(/^@/, ''))}</a>` : ''}<a href="#ayuda">${esc(S.ciudad || 'Oruro')} – Bolivia</a></div></div>
   <div class="wrap legal">© ${new Date().getFullYear()} STYLUS · Propietario: Marcelo Angola Cuenca · <a href="#admin" style="display:inline;color:#8f8b84">Administrar</a></div>`;
 }
+function qrDaysLeft(){ if(!S.qr_vence) return null; const v = new Date(S.qr_vence + 'T23:59:59'); return Math.floor((v - new Date()) / 864e5); }
+const qrExpired = () => { const d = qrDaysLeft(); return d !== null && d < 0; };
 const fmtTel = t => { const d = digits(t).replace(/^591/, ''); return d.length === 8 ? d.replace(/(\d{4})(\d{4})/, '$1 $2') : d; };
 
 /* ---------- Tarjeta de prenda ---------- */
@@ -722,9 +724,9 @@ function vOrder(){
   return `<div class="wrap" style="padding-top:18px"><div class="stepper"><span>1 · Tus datos</span><span class="on">2 · Pago QR</span><span class="on">3 · Comprobante</span></div></div>
   <div class="wrap co"><div class="box paybox"><span class="eyebrow">Tu código de pedido</span><div class="code">${esc(o.codigo)}</div>
     <div><span class="muted">Monto exacto a pagar</span><div class="price" style="font-size:34px">${bs(o.total)}</div></div>
-    <div class="qr">${S.qr ? `<img src="${esc(S.qr)}" alt="QR de pago STYLUS">` : `<span class="muted" style="padding:20px">${DEMO ? 'Aquí aparecerá el QR de Yasta – Banco Unión (modo demostración).' : 'El QR de pago aún no fue cargado. Escríbenos por WhatsApp y te lo enviamos.'}</span>`}</div>
+    <div class="qr">${S.qr && !qrExpired() ? `<img src="${esc(S.qr)}" alt="QR de pago STYLUS">` : S.qr ? `<span class="muted" style="padding:20px">Estamos renovando nuestro QR. Toca el botón verde y te lo enviamos por WhatsApp al instante.</span>` : `<span class="muted" style="padding:20px">${DEMO ? 'Aquí aparecerá el QR de Yasta – Banco Unión (modo demostración).' : 'El QR de pago aún no fue cargado. Escríbenos por WhatsApp y te lo enviamos.'}</span>`}</div>
     <span class="muted" style="font-size:14px">A nombre de <b>${esc(S.titular)}</b> · ${esc(S.banco)}</span>
-    ${S.qr ? `<button class="btn out sm" id="qDl">Guardar QR en mi galería</button>` : ''}
+    ${S.qr && !qrExpired() ? `<button class="btn out sm" id="qDl">Guardar QR en mi galería</button>` : ''}
     <ol class="how"><li>Abre la app de tu banco o billetera y elige <b>Pagar con QR</b>.</li><li>Escanea el QR (o súbelo desde tu galería) y paga <b>${bs(o.total)}</b>.</li><li>En la glosa o descripción escribe <b>${esc(o.codigo)}</b>.</li><li>Toca el botón verde y <b>adjunta la captura</b> de tu comprobante en WhatsApp.</li></ol>
     <a class="btn wa block" id="oWA" href="${waLink(orderMsg(o))}" target="_blank" rel="noopener">${I.wa} Enviar comprobante por WhatsApp</a>
     <p class="muted" style="margin:0;font-size:14px">Tus prendas están reservadas por <span class="timer" id="tmr">—</span>. Si no recibimos el pago, vuelven a la tienda.</p></div>
@@ -785,12 +787,13 @@ async function vAdmin(sub){
     const dl = S.drop_fecha ? new Date(new Date(S.drop_fecha).getTime() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 16) : '';
     body = `<form class="box form" id="sF"><h3 style="font-size:20px">Contacto y redes</h3>${f('sW', 'WhatsApp de la tienda', fmtTel(S.whatsapp), 'tel')}<div class="two">${f('sIg', 'Instagram (usuario)', S.instagram, 'text', 'stylus.bo')}${f('sTk', 'TikTok (usuario)', S.tiktok, 'text', 'stylus.bo')}</div>${f('sCi', 'Ciudad', S.ciudad)}
     <h3 style="font-size:20px">Pago con QR</h3><div style="display:flex;gap:12px;align-items:center"><div class="qr" style="width:120px;padding:6px">${S.qr ? `<img src="${esc(S.qr)}" alt="QR">` : '<span class="muted" style="font-size:12px;text-align:center">Sin QR</span>'}</div><div style="display:grid;gap:8px"><label class="btn out sm">Subir imagen del QR<input type="file" accept="image/*" id="sQr" hidden></label><span class="muted" style="font-size:13px">En la app Yasta: Cobrar → QR → Compartir / Guardar imagen.</span></div></div>
-    <div class="two">${f('sTi', 'Titular', S.titular)}${f('sBa', 'Banco / billetera', S.banco)}</div>${f('sRh', 'Horas de reserva sin pago', S.reserva_horas, 'number')}
+    <div class="two">${f('sTi', 'Titular', S.titular)}${f('sBa', 'Banco / billetera', S.banco)}</div><div class="two">${f('sQv', 'El QR vence el', S.qr_vence || '', 'date')}${f('sRh', 'Horas de reserva sin pago', S.reserva_horas, 'number')}</div><span class="muted" style="font-size:13px">Al generar el QR en Yasta, elige la vigencia más larga posible y anota aquí la fecha de vencimiento.</span>
     <h3 style="font-size:20px">Anuncios</h3>${f('sAn', 'Cinta superior (separa con ·)', S.anuncio)}<div class="two"><div class="field"><label for="sDf">Próximo drop</label><input id="sDf" type="datetime-local" value="${dl}"></div>${f('sDt', 'Texto del drop', S.drop_texto)}</div>
     <h3 style="font-size:20px">Textos</h3><div class="field"><label for="sEn">Envíos</label><textarea id="sEn">${esc(S.envio_texto)}</textarea></div><div class="field"><label for="sCa">Cambios y devoluciones</label><textarea id="sCa">${esc(S.cambios_texto)}</textarea></div>
     <button class="btn block" type="submit">Guardar ajustes</button></form>`;
   }
-  return `<div class="wrap adm">${tabs}${body}</div>`;
+  const qd = qrDaysLeft(); const warn = qd === null ? '' : qd < 0 ? `<div class="note" style="background:#F9E1DF;color:var(--sold)"><b>Tu QR de pago venció.</b> Los clientes ven un aviso para pedírtelo por WhatsApp. Genera uno nuevo en Yasta y súbelo en Ajustes.</div>` : qd <= 10 ? `<div class="note" style="background:#FDF0DA"><b>Tu QR de pago vence en ${qd} día${qd === 1 ? '' : 's'}</b> (${esc(S.qr_vence)}). Genera uno nuevo en Yasta y súbelo en Ajustes.</div>` : '';
+  return `<div class="wrap adm">${tabs}${warn}${body}</div>`;
 }
 function editHTML(){
   const p = edit; const o = (v, cur) => v === cur ? 'selected' : '';
@@ -854,7 +857,7 @@ function bindAdmin(){
   const sF = $('#sF'); if(sF){
     $('#sQr').onchange = async e => { const f = e.target.files[0]; if(!f) return; toast('Subiendo QR…'); try{ S.qr = await API.uploadPhoto(await compress(f)); await API.saveSettings(S); toast('QR guardado'); render(); }catch(ex){ toast('No se pudo subir el QR'); } };
     sF.onsubmit = async e => { e.preventDefault(); const v = id => $('#' + id).value.trim(); const w = digits(v('sW')); const df = v('sDf');
-      Object.assign(S, {whatsapp:w.length === 8 ? '591' + w : w, instagram:v('sIg').replace(/^@/, ''), tiktok:v('sTk').replace(/^@/, ''), ciudad:v('sCi'), titular:v('sTi'), banco:v('sBa'), reserva_horas:Math.max(1, parseInt(v('sRh')) || 2), anuncio:v('sAn'), drop_fecha:df ? new Date(df).toISOString() : null, drop_texto:v('sDt'), envio_texto:v('sEn'), cambios_texto:v('sCa')});
+      Object.assign(S, {whatsapp:w.length === 8 ? '591' + w : w, instagram:v('sIg').replace(/^@/, ''), tiktok:v('sTk').replace(/^@/, ''), ciudad:v('sCi'), titular:v('sTi'), banco:v('sBa'), qr_vence:v('sQv') || null, reserva_horas:Math.max(1, parseInt(v('sRh')) || 2), anuncio:v('sAn'), drop_fecha:df ? new Date(df).toISOString() : null, drop_texto:v('sDt'), envio_texto:v('sEn'), cambios_texto:v('sCa')});
       try{ await API.saveSettings(S); chrome(); toast('Ajustes guardados'); }catch(ex){ toast('No se pudo guardar: ' + ex.message); } };
   }
 }

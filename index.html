@@ -146,6 +146,9 @@ h3{font:16px var(--display);text-transform:uppercase;letter-spacing:.6px}
 .crop i[data-h=tl]{left:-13px;top:-13px} .crop i[data-h=tr]{right:-13px;top:-13px} .crop i[data-h=bl]{left:-13px;bottom:-13px} .crop i[data-h=br]{right:-13px;bottom:-13px}
 .guiaimg{width:100%;border-radius:10px;border:1px solid var(--line);background:var(--mist)}
 #print{display:none}
+.sheetP img{width:100%;height:100%;display:block;object-fit:fill}
+.dragf{position:absolute;transform:translate(0,-100%);opacity:.8;background:var(--gold);color:#111;font-weight:800;font-size:11px;padding:2px 7px;border-radius:999px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:grab;touch-action:none;user-select:none;white-space:nowrap}
+.dragf.on{cursor:grabbing;background:#111;color:#fff}
 @media print{
   @page{size:letter portrait;margin:0}
   body{background:#fff}
@@ -166,7 +169,7 @@ h3{font:16px var(--display);text-transform:uppercase;letter-spacing:.6px}
    STYLUS — membretes de envío, clientes y guías por WhatsApp
    Datos guardados en el celular (IndexedDB).
    ========================================================= */
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const ADMIN_PUB = {kty:'EC',crv:'P-256',x:'4FQodfEaGt87OxQGmwuweN7UhL1yra0rtaM3065_pNU',y:'E4ckp3sAiVOfUVeKxXcGKJjg5U9CezfyCGq2MkF45GU',ext:true};
 const PER_SHEET = 8;
 
@@ -422,13 +425,13 @@ function header(){
 }
 function navHTML(){
   const t = [['ped','Pedidos',I.box],['cli','Clientes',I.users],['nuevo','Nuevo',I.plus],['res','Resumen',I.chart],['mas','Más',I.more]];
-  return `<div class="in">${t.map(([k, l, ic]) => k === 'nuevo' ? `<button class="plus ${route === k ? 'on' : ''}" data-go="${k}"><div class="ic">${ic}</div><span>${l}</span></button>` : `<button class="${route === k || (k === 'mas' && ['mas','cfg','adm','msg'].includes(route)) ? 'on' : ''}" data-go="${k}">${ic}<span>${l}</span></button>`).join('')}</div>`;
+  return `<div class="in">${t.map(([k, l, ic]) => k === 'nuevo' ? `<button class="plus ${route === k ? 'on' : ''}" data-go="${k}"><div class="ic">${ic}</div><span>${l}</span></button>` : `<button class="${route === k || (k === 'mas' && ['mas','cfg','adm','msg','dis'].includes(route)) ? 'on' : ''}" data-go="${k}">${ic}<span>${l}</span></button>`).join('')}</div>`;
 }
 function render(){
   const app = $('#app'), tabs = $('#tabs');
   if(!lic){ tabs.hidden = true; app.innerHTML = route === 'activar' ? vActivar() : vWelcome(); if(route === 'activar') bindActivar(); return; }
   tabs.hidden = false; tabs.innerHTML = navHTML(); $$('[data-go]', tabs).forEach(b => b.onclick = () => go(b.dataset.go));
-  const V = {nuevo:[vNuevo,bindNuevo], ped:[vPed,bindPed], cli:[vCli,bindCli], res:[vRes,bindRes], mas:[vMas,bindMas], cfg:[vCfg,bindCfg], msg:[vMsg,bindMsg], adm:[vAdm,bindAdm]};
+  const V = {dis:[vDis,bindDis], nuevo:[vNuevo,bindNuevo], ped:[vPed,bindPed], cli:[vCli,bindCli], res:[vRes,bindRes], mas:[vMas,bindMas], cfg:[vCfg,bindCfg], msg:[vMsg,bindMsg], adm:[vAdm,bindAdm]};
   const [v, b] = V[route] || V.nuevo; app.innerHTML = header() + `<main>${v()}</main>`; b();
 }
 function go(r){ route = r; render(); window.scrollTo(0,0); }
@@ -708,81 +711,206 @@ async function sendGuide(o){
   });
 }
 
-/* ---------- Membretes: Word y PDF ---------- */
-function labelHTML(o){
-  const lg = logoSrc();
-  const f = (ic, v) => `<div class="f"><img src="img/${ic}.png" alt=""><div>${esc(v || '')}</div></div>`;
-  return `<div class="lbl"><div class="lg">${lg ? `<img src="${lg}" alt="">` : `<div class="txt">${esc(cfg.marca || '')}</div>`}</div><div class="fs"><div class="no">${o ? fmtNum(o.num) : ''}</div>${f('i_user', o && o.nombre)}${f('i_pin', o && o.ciudad)}${f('i_id', o && o.ci)}${f('i_tel', o && o.cel)}</div></div>`;
+/* ---------- Membretes: diseños personalizables (Word, PDF y vista previa idénticos) ---------- */
+const LW = 1200, LH = 788; // 10,16 × 6,67 cm a 300 ppp
+const FONTS = [
+  {k:'Arial', g:''}, {k:'Archivo Black', g:'Archivo+Black'}, {k:'Montserrat', g:'Montserrat:wght@500;700;800'}, {k:'Poppins', g:'Poppins:wght@500;700'},
+  {k:'Oswald', g:'Oswald:wght@500;700'}, {k:'Bebas Neue', g:'Bebas+Neue'}, {k:'Roboto Slab', g:'Roboto+Slab:wght@500;700'},
+  {k:'Courier Prime', g:'Courier+Prime:wght@400;700'}, {k:'Pacifico', g:'Pacifico'}, {k:'Caveat', g:'Caveat:wght@600;700'}
+];
+const TPLS = [
+  {k:'clasico', t:'Clásico', d:'Logo a la izquierda e íconos'},
+  {k:'moderno', t:'Moderno', d:'Franja de color con tu marca'},
+  {k:'minimal', t:'Minimalista', d:'Letras grandes, sin íconos'},
+  {k:'envio', t:'Envío destacado', d:'Ciudad en grande para la flota'},
+  {k:'propio', t:'Mi propio diseño', d:'Sube tu membrete y ubica los datos'}
+];
+const LFIELDS = [['num', 'N° pedido'], ['nombre', 'Nombre'], ['ciudad', 'Ciudad'], ['ci', 'C.I.'], ['cel', 'Celular']];
+function defaultLbl(){ return {tpl:'clasico', font:'Arial', bold:true, scale:1, color:'#111111', accent:'#111111', border:true, icons:true, num:true, bg:'',
+  pos:{num:{x:.70, y:.13}, nombre:{x:.38, y:.38}, ciudad:{x:.38, y:.56}, ci:{x:.38, y:.74}, cel:{x:.38, y:.91}}}; }
+const L = () => { cfg.lbl = Object.assign(defaultLbl(), cfg.lbl || {}); cfg.lbl.pos = Object.assign(defaultLbl().pos, cfg.lbl.pos || {}); return cfg.lbl; };
+const imgC = {};
+function loadImg(src){ if(!src) return Promise.resolve(null); if(imgC[src]) return imgC[src]; return imgC[src] = new Promise(ok => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; }); }
+const fontReady = {};
+function ensureFont(name){
+  const f = FONTS.find(x => x.k === name); if(!f || !f.g) return Promise.resolve();
+  if(fontReady[name]) return fontReady[name];
+  if(!document.querySelector(`link[data-font="${name}"]`)){ const l = document.createElement('link'); l.rel = 'stylesheet'; l.dataset.font = name; l.href = `https://fonts.googleapis.com/css2?family=${f.g}&display=swap`; document.head.appendChild(l); }
+  const loadIt = () => Promise.all([document.fonts.load(`700 40px "${name}"`), document.fonts.load(`500 40px "${name}"`)]).catch(() => {});
+  return fontReady[name] = Promise.race([new Promise(r => setTimeout(r, 120)).then(loadIt).then(loadIt), new Promise(r => setTimeout(r, 3500))]);
 }
-function sheetsHTML(list){ const pages = []; for(let i=0; i<Math.max(1, list.length); i+=PER_SHEET) pages.push(list.slice(i, i+PER_SHEET)); return pages.map(p => `<div class="sheetP">${Array.from({length:PER_SHEET}, (_, k) => labelHTML(p[k])).join('')}</div>`).join(''); }
+const tintC = {};
+async function tintedIcon(name, color){
+  const key = name + color; if(tintC[key]) return tintC[key];
+  const im = await loadImg(`img/${name}.png`); if(!im) return null;
+  const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const x = c.getContext('2d');
+  x.drawImage(im, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = color; x.fillRect(0, 0, c.width, c.height); return tintC[key] = c;
+}
+function fnt(L, px, bold){ const b = bold === undefined ? L.bold : bold; return `${b ? 700 : 500} ${Math.round(px)}px "${L.font}", Arial, Helvetica, sans-serif`; }
+function fitText(x, text, maxW, px, L, bold){ let s = px; x.font = fnt(L, s, bold); while(x.measureText(text).width > maxW && s > 14){ s -= 2; x.font = fnt(L, s, bold); } return s; }
+function drawContain(x, im, X, Y, W, H){ const r = Math.min(W / im.width, H / im.height); const w = im.width * r, h = im.height * r; x.drawImage(im, X + (W - w) / 2, Y + (H - h) / 2, w, h); }
+function rrect(x, X, Y, W, H, R){ x.beginPath(); x.moveTo(X + R, Y); x.arcTo(X + W, Y, X + W, Y + H, R); x.arcTo(X + W, Y + H, X, Y + H, R); x.arcTo(X, Y + H, X, Y, R); x.arcTo(X, Y, X + W, Y, R); x.closePath(); }
+async function drawLabel(canvas, o, Lc){
+  const L = Lc || cfg.lbl || defaultLbl(); canvas.width = LW; canvas.height = LH; const x = canvas.getContext('2d');
+  await ensureFont(L.font);
+  const [logo, bg] = await Promise.all([loadImg(logoSrc()), L.tpl === 'propio' ? loadImg(L.bg) : null]);
+  const v = {num:o && L.num ? fmtNum(o.num) : '', nombre:o ? o.nombre : '', ciudad:o ? o.ciudad : '', ci:o ? o.ci : '', cel:o ? o.cel : ''};
+  const S = Number(L.scale) || 1, C = L.color, A = L.accent;
+  x.fillStyle = '#fff'; x.fillRect(0, 0, LW, LH); x.textBaseline = 'alphabetic'; x.textAlign = 'left';
+  const border = (w=8, dash) => { if(!L.border) return; x.save(); x.strokeStyle = A; x.lineWidth = w; if(dash) x.setLineDash(dash); x.strokeRect(w / 2 + 4, w / 2 + 4, LW - w - 8, LH - w - 8); x.restore(); };
+  const brandText = (X, Y, W, H, col) => { x.fillStyle = col; x.textAlign = 'center'; const t = (cfg.marca || '').toUpperCase(); if(!t) return; const s = fitText(x, t, W, Math.min(H * .5, 90), L, true); x.fillText(t, X + W / 2, Y + H / 2 + s * .35); x.textAlign = 'left'; };
+  if(L.tpl === 'moderno'){
+    const bh = LH * .30; x.fillStyle = A; x.fillRect(0, 0, LW, bh);
+    if(logo){ x.fillStyle = '#fff'; rrect(x, 36, 28, bh - 56 + 40, bh - 56, 18); x.fill(); drawContain(x, logo, 46, 36, bh - 76 + 40, bh - 72); }
+    x.fillStyle = '#fff'; const tx = logo ? bh + 40 : 44; const m = (cfg.marca || '').toUpperCase(); const ms = fitText(x, m, LW - tx - 260, 60, L, true); x.fillText(m, tx, bh / 2 + ms * .35);
+    if(v.num){ x.font = fnt(L, 34 * S, true); x.textAlign = 'right'; x.fillText(v.num, LW - 40, bh / 2 + 12); x.textAlign = 'left'; }
+    const lab = (t, X, Y) => { x.fillStyle = A; x.font = fnt(L, 24, true); x.fillText(t, X, Y); };
+    const val = (t, X, Y, W, px) => { x.fillStyle = C; const s = fitText(x, t || '', W, px * S, L); x.fillText(t || '', X, Y); };
+    const line = (X, Y, W) => { x.fillStyle = A; x.globalAlpha = .35; x.fillRect(X, Y, W, 3); x.globalAlpha = 1; };
+    lab('NOMBRE', 44, LH * .41); val(v.nombre, 44, LH * .53, LW - 88, 52); line(44, LH * .555, LW - 88);
+    lab('CIUDAD', 44, LH * .63); val(v.ciudad, 44, LH * .745, LW - 88, 52); line(44, LH * .77, LW - 88);
+    lab('C.I.', 44, LH * .845); val(v.ci, 44, LH * .945, LW / 2 - 70, 44); lab('CELULAR', LW / 2 + 10, LH * .845); val(v.cel, LW / 2 + 10, LH * .945, LW / 2 - 60, 44);
+    border(6);
+  } else if(L.tpl === 'minimal'){
+    border(4);
+    x.fillStyle = A; x.font = fnt(L, 26, true); x.fillText('PARA', 50, LH * .16);
+    x.fillStyle = C; fitText(x, v.nombre, LW - 100, 64 * S, L); x.fillText(v.nombre, 50, LH * .34);
+    x.fillStyle = A; const cs = fitText(x, (v.ciudad || '').toUpperCase(), LW - 100, 60 * S, L, true); x.fillText((v.ciudad || '').toUpperCase(), 50, LH * .55);
+    x.fillStyle = C; const det = [v.ci && 'C.I. ' + v.ci, v.cel && 'Cel. ' + v.cel].filter(Boolean).join('   ·   '); fitText(x, det, LW - 100, 40 * S, L, false); x.fillText(det, 50, LH * .72);
+    x.fillStyle = A; x.globalAlpha = .25; x.fillRect(50, LH * .79, LW - 100, 3); x.globalAlpha = 1;
+    if(logo) drawContain(x, logo, 46, LH * .82, 220, LH * .14); else { x.fillStyle = C; x.font = fnt(L, 32, true); x.fillText((cfg.marca || '').toUpperCase(), 50, LH * .93); }
+    if(v.num){ x.fillStyle = C; x.font = fnt(L, 32 * S, true); x.textAlign = 'right'; x.fillText(v.num, LW - 50, LH * .93); x.textAlign = 'left'; }
+  } else if(L.tpl === 'envio'){
+    border(6, [26, 14]);
+    if(logo) drawContain(x, logo, 40, 30, 230, LH * .2); else brandText(40, 30, 260, LH * .2, C);
+    x.fillStyle = A; x.font = fnt(L, 30, true); x.textAlign = 'center'; x.fillText('ENVÍO A', LW / 2, LH * .17);
+    if(v.num){ x.fillStyle = C; x.font = fnt(L, 32 * S, true); x.textAlign = 'right'; x.fillText(v.num, LW - 44, LH * .12); }
+    x.textAlign = 'center'; x.fillStyle = A; const cty = (v.ciudad || '').toUpperCase(); fitText(x, cty, LW - 120, 118 * S, L, true); x.fillText(cty, LW / 2, LH * .45);
+    x.fillStyle = A; x.fillRect(60, LH * .52, LW - 120, 5);
+    x.textAlign = 'left'; x.fillStyle = C;
+    const ln = (lbl, t, Y, px) => { x.font = fnt(L, px * S * .8, true); const w = x.measureText(lbl).width; x.fillText(lbl, 60, Y); fitText(x, t || '', LW - 140 - w, px * S, L); x.fillText(t || '', 72 + w, Y); };
+    ln('Nombre:', v.nombre, LH * .67, 48); ln('C.I.:', v.ci, LH * .81, 42); ln('Cel.:', v.cel, LH * .93, 42);
+  } else if(L.tpl === 'propio'){
+    if(bg){ const r = Math.max(LW / bg.width, LH / bg.height); x.drawImage(bg, (LW - bg.width * r) / 2, (LH - bg.height * r) / 2, bg.width * r, bg.height * r); }
+    else { x.fillStyle = '#f3f3f1'; x.fillRect(0, 0, LW, LH); x.fillStyle = '#999'; x.font = fnt(L, 40, true); x.textAlign = 'center'; x.fillText('Sube la imagen de tu membrete', LW / 2, LH / 2); x.textAlign = 'left'; }
+    const base = {num:32, nombre:48, ciudad:48, ci:42, cel:42};
+    LFIELDS.forEach(([k]) => { const t = v[k]; if(!t) return; const p = L.pos[k]; const X = p.x * LW, Y = p.y * LH; x.fillStyle = C; fitText(x, t, LW - X - 24, base[k] * S, L, k === 'num' ? true : undefined); x.fillText(t, X, Y); });
+  } else { // clásico
+    border(8);
+    const lx = 34, lw = LW * .34; if(logo) drawContain(x, logo, lx, 40, lw, LH - 80); else brandText(lx, 40, lw, LH - 80, C);
+    const x0 = LW * .385, xr = LW - 40;
+    if(v.num){ x.fillStyle = C; x.font = fnt(L, 32 * S, true); x.textAlign = 'right'; x.fillText(v.num, xr, 66); x.textAlign = 'left'; }
+    const rows = [['i_user', v.nombre], ['i_pin', v.ciudad], ['i_id', v.ci], ['i_tel', v.cel]]; const ys = [.36, .55, .74, .92];
+    for(let i = 0; i < 4; i++){ const Y = LH * ys[i]; let tx = x0;
+      if(L.icons){ const ic = await tintedIcon(rows[i][0], A); if(ic){ const h = 52, w = h * ic.width / ic.height; x.drawImage(ic, x0, Y - h + 6, Math.min(w, 62), h); } tx = x0 + 82; }
+      x.fillStyle = A; x.fillRect(tx - 6, Y + 14, xr - tx + 6, 4);
+      x.fillStyle = C; fitText(x, rows[i][1] || '', xr - tx - 6, 46 * S, L); x.fillText(rows[i][1] || '', tx, Y); }
+  }
+  return canvas;
+}
+async function labelImages(list, type='image/jpeg'){
+  const pages = []; for(let i = 0; i < Math.max(1, list.length); i += PER_SHEET) pages.push(list.slice(i, i + PER_SHEET));
+  const out = []; for(const p of pages){ const imgs = []; for(let k = 0; k < PER_SHEET; k++){ const c = await drawLabel(document.createElement('canvas'), p[k]); imgs.push(c); } out.push(imgs); } return out;
+}
+async function sheetsHTMLAsync(list){ const pages = await labelImages(list); return pages.map(p => `<div class="sheetP">${p.map(c => `<img src="${c.toDataURL('image/jpeg', .92)}" alt="">`).join('')}</div>`).join(''); }
 function previewSheet(list){
-  sheet(`<div class="row between"><h3>Vista previa</h3><span class="hint">${Math.ceil(list.length / PER_SHEET)} hoja(s)</span></div><div id="pv" class="stack"></div>
-  <div class="grid2"><button class="btn gold" id="pvW">${I.doc} Word</button><button class="btn pri" id="pvP">${I.print} PDF</button></div>`, s => {
-    const pv = $('#pv', s); pv.innerHTML = sheetsHTML(list);
-    // envolver cada hoja y escalar
+  sheet(`<div class="row between"><h3>Vista previa</h3><span class="hint">${Math.ceil(Math.max(1, list.length) / PER_SHEET)} hoja(s)</span></div><div id="pv" class="stack"><p class="hint">Preparando…</p></div>
+  <div class="grid2"><button class="btn gold" id="pvW">${I.doc} Word</button><button class="btn pri" id="pvP">${I.print} PDF</button></div>`, async s => {
+    $('#pvW', s).onclick = () => makeWord(list); $('#pvP', s).onclick = () => printLabels(list);
+    const pv = $('#pv', s); const html = await sheetsHTMLAsync(list); if(!document.body.contains(pv)) return; pv.innerHTML = html;
     const sheetsEl = $$('.sheetP', pv); pv.innerHTML = ''; sheetsEl.forEach(sp => { const w = document.createElement('div'); w.className = 'lblwrap'; w.appendChild(sp); pv.appendChild(w); });
     requestAnimationFrame(() => { $$('.lblwrap', pv).forEach(w => { const sp = w.firstChild; const sc = w.clientWidth / sp.offsetWidth; sp.style.transform = `scale(${sc})`; w.style.height = sp.offsetHeight * sc + 'px'; }); });
-    $('#pvW', s).onclick = () => makeWord(list); $('#pvP', s).onclick = () => printLabels(list);
   });
 }
 function askMarkPrinted(list){
+  if(!list.length || list[0].demo) return;
   sheet(`<h3>¿Se imprimieron bien?</h3><p style="margin:0">Si ya imprimiste estos <b>${list.length}</b> membretes, márcalos como impresos para que la próxima hoja empiece vacía.</p>
   <div class="grid2"><button class="btn" onclick="closeSheet()">Todavía no</button><button class="btn pri" id="mpOk">Marcar impresos</button></div>`, s => {
     $('#mpOk', s).onclick = async () => { list.forEach(o => { const x = orders.find(y => y.id === o.id); if(x) x.impreso = true; }); await saveOrders(); closeSheet(); render(); toast('Listo, membretes marcados como impresos'); };
   });
 }
-function printLabels(list){
-  closeSheet();
-  const p = $('#print'); p.innerHTML = sheetsHTML(list);
-  const imgs = $$('img', p); Promise.all(imgs.map(i => i.complete ? 1 : new Promise(r => { i.onload = i.onerror = r; }))).then(() => {
-    setTimeout(() => { window.print(); setTimeout(() => askMarkPrinted(list), 600); }, 150);
-  });
+async function printLabels(list){
+  closeSheet(); toast('Preparando membretes…');
+  const p = $('#print'); p.innerHTML = await sheetsHTMLAsync(list);
+  const imgs = $$('img', p); await Promise.all(imgs.map(i => i.complete ? 1 : new Promise(r => { i.onload = i.onerror = r; })));
+  setTimeout(() => { window.print(); setTimeout(() => askMarkPrinted(list), 600); }, 150);
 }
-async function fetchBytes(u){ const r = await fetch(u); return new Uint8Array(await r.arrayBuffer()); }
 async function makeWord(list){
   closeSheet(); toast('Creando archivo Word…');
   try{ await loadScript('vendor/docx.umd.js'); }catch(e){ toast('Necesitas internet la primera vez para crear el Word'); return; }
-  const D = window.docx;
-  const [lg, ...ics] = await Promise.all([logoBytes(), ...['i_user','i_pin','i_id','i_tel'].map(n => fetchBytes(`img/${n}.png`))]);
-  const icSz = await Promise.all(['i_user','i_pin','i_id','i_tel'].map(n => imgSize(`img/${n}.png`)));
-  const DXA = D.WidthType.DXA, NONE = {style:D.BorderStyle.NONE, size:0, color:'FFFFFF'};
-  const noB = {top:NONE, bottom:NONE, left:NONE, right:NONE, insideHorizontal:NONE, insideVertical:NONE};
+  const D = window.docx; const DXA = D.WidthType.DXA, NONE = {style:D.BorderStyle.NONE, size:0, color:'FFFFFF'};
   const cellNoB = {top:NONE, bottom:NONE, left:NONE, right:NONE};
-  const thick = {style:D.BorderStyle.SINGLE, size:14, color:'000000'};
-  const COLW = 5760, ROWH = 3700, LOGOW = 1980, ICW = 430, TXW = 3150; // 1440 = 1 pulgada
-  const tiny = () => new D.Paragraph({spacing:{before:0, after:0, line:20, lineRule:D.LineRuleType ? D.LineRuleType.EXACT : undefined}, children:[new D.TextRun({text:'', size:2})]});
-  function logoPara(){
-    if(lg){ const maxW = 122, maxH = 118; const r = Math.min(maxW / lg.w, maxH / lg.h); return new D.Paragraph({alignment:D.AlignmentType.CENTER, children:[new D.ImageRun({data:lg.buf, transformation:{width:Math.round(lg.w*r), height:Math.round(lg.h*r)}})]}); }
-    return new D.Paragraph({alignment:D.AlignmentType.CENTER, children:[new D.TextRun({text:cfg.marca || '', bold:true, size:30, font:'Arial Black'})]});
+  const pages = await labelImages(list);
+  const toBytes = c => new Promise(ok => c.toBlob(async b => ok(new Uint8Array(await b.arrayBuffer())), 'image/jpeg', .92));
+  const COLW = 5760, ROWH = 3730;
+  const sections = [];
+  for(const p of pages){
+    const bytes = []; for(const c of p) bytes.push(await toBytes(c));
+    const rows = []; for(let r = 0; r < 4; r++) rows.push(new D.TableRow({height:{value:ROWH, rule:D.HeightRule.EXACT}, cantSplit:true, children:[0, 1].map(k => new D.TableCell({width:{size:COLW, type:DXA}, borders:cellNoB, margins:{top:0, bottom:0, left:0, right:0}, verticalAlign:D.VerticalAlign.CENTER,
+      children:[new D.Paragraph({alignment:D.AlignmentType.CENTER, spacing:{before:0, after:0}, children:[new D.ImageRun({data:bytes[r * 2 + k], transformation:{width:376, height:246}})]})]}))}));
+    sections.push({properties:{page:{size:{width:12240, height:15840, orientation:D.PageOrientation.PORTRAIT}, margin:{top:300, bottom:200, left:360, right:360, header:0, footer:0}}},
+      children:[new D.Table({width:{size:COLW * 2, type:DXA}, columnWidths:[COLW, COLW], layout:D.TableLayoutType.FIXED, borders:{top:NONE, bottom:NONE, left:NONE, right:NONE, insideHorizontal:NONE, insideVertical:NONE}, rows}),
+        new D.Paragraph({spacing:{before:0, after:0}, children:[new D.TextRun({text:'', size:2})]})]});
   }
-  function label(o){
-    const vals = o ? [o.nombre, o.ciudad, o.ci, o.cel] : ['', '', '', ''];
-    const rows = [];
-    vals.forEach((v, i) => {
-      const s = icSz[i]; const h = 17, w = Math.round(h * s.w / s.h);
-      rows.push(new D.TableRow({height:{value:780, rule:D.HeightRule.EXACT}, children:[
-        new D.TableCell({width:{size:ICW, type:DXA}, borders:cellNoB, verticalAlign:D.VerticalAlign.BOTTOM, margins:{bottom:40}, children:[new D.Paragraph({spacing:{before:0, after:0}, children:[new D.ImageRun({data:ics[i], transformation:{width:Math.min(w, 22), height:h}})]})]}),
-        new D.TableCell({width:{size:TXW, type:DXA}, borders:{...cellNoB, bottom:{style:D.BorderStyle.SINGLE, size:8, color:'000000'}}, verticalAlign:D.VerticalAlign.BOTTOM, margins:{bottom:30, left:60}, children:[new D.Paragraph({spacing:{before:0, after:0}, children:[new D.TextRun({text:v || '', bold:true, size:v && v.length > 24 ? 18 : 22, font:'Arial'})]})]})
-      ]}));
-    });
-    const fields = new D.Table({width:{size:ICW + TXW, type:DXA}, columnWidths:[ICW, TXW], layout:D.TableLayoutType.FIXED, borders:noB, rows});
-    const right = new D.TableCell({width:{size:ICW + TXW, type:DXA}, borders:cellNoB, verticalAlign:D.VerticalAlign.TOP, children:[
-      new D.Paragraph({alignment:D.AlignmentType.RIGHT, spacing:{before:0, after:0}, children:[new D.TextRun({text:o ? fmtNum(o.num) : ' ', bold:true, size:17, font:'Arial'})]}), fields, tiny()]});
-    const left = new D.TableCell({width:{size:LOGOW, type:DXA}, borders:cellNoB, verticalAlign:D.VerticalAlign.CENTER, children:[logoPara()]});
-    const inner = new D.Table({width:{size:LOGOW + ICW + TXW, type:DXA}, columnWidths:[LOGOW, ICW + TXW], layout:D.TableLayoutType.FIXED, borders:noB, rows:[new D.TableRow({children:[left, right]})]});
-    return new D.TableCell({width:{size:COLW, type:DXA}, borders:{top:thick, bottom:thick, left:thick, right:thick}, margins:{top:60, bottom:60, left:90, right:90}, verticalAlign:D.VerticalAlign.CENTER, children:[inner, tiny()]});
-  }
-  const pages = []; for(let i=0; i<Math.max(1, list.length); i+=PER_SHEET) pages.push(list.slice(i, i+PER_SHEET));
-  const sections = pages.map(pg => {
-    const rows = []; for(let r=0; r<4; r++) rows.push(new D.TableRow({height:{value:ROWH, rule:D.HeightRule.EXACT}, cantSplit:true, children:[label(pg[r*2]), label(pg[r*2+1])]}));
-    return {properties:{page:{size:{width:12240, height:15840, orientation:D.PageOrientation.PORTRAIT}, margin:{top:360, bottom:200, left:360, right:360, header:0, footer:0}}},
-      children:[new D.Table({width:{size:COLW*2, type:DXA}, columnWidths:[COLW, COLW], layout:D.TableLayoutType.FIXED, rows}), tiny()]};
-  });
-  const doc = new D.Document({creator:cfg.marca || 'STYLUS', title:'Membretes de envío', styles:{default:{document:{run:{font:'Arial', size:20}}}}, sections});
+  const doc = new D.Document({creator:cfg.marca || 'Membretes', title:'Membretes de envío', sections});
   const blob = await D.Packer.toBlob(doc);
   const nums = list.length ? `${pad(list[0].num, 4)}-${pad(list[list.length-1].num, 4)}` : 'vacio';
   const r = await shareOrDownload(blob, `Membretes_${(cfg.marca || 'envios').replace(/\W+/g,'')}_${nums}.docx`);
   if(r !== 'cancel') setTimeout(() => askMarkPrinted(list), 700);
+}
+
+/* ---------- Diseño del membrete (editor) ---------- */
+let lblDraft = null;
+const sampleOrder = () => { const o = orders.slice().sort((a, b) => b.num - a.num)[0]; return o ? {...o} : {num:cfg.nextNum || 1, nombre:'Juan Pérez Mamani', ciudad:'Cochabamba', ci:'1234567 LP', cel:'71234567'}; };
+function vDis(){
+  if(!lblDraft) lblDraft = JSON.parse(JSON.stringify(L()));
+  const d = lblDraft;
+  return `<div class="row"><button class="btn sm ghost" onclick="lblDraft=null;go('mas')" aria-label="Volver">${I.left}</button><h2>Diseño del membrete</h2></div>
+  <div style="position:sticky;top:calc(70px + env(safe-area-inset-top,0px));z-index:6;background:var(--paper);padding:6px 0" id="pvWrap"><div style="position:relative" id="pvBox"><canvas id="lblPv" style="width:100%;height:auto;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.15);display:block;background:#fff"></canvas>
+  ${d.tpl === 'propio' ? LFIELDS.map(([k, t]) => `<span class="dragf" data-k="${k}" style="left:${d.pos[k].x * 100}%;top:${d.pos[k].y * 100}%">${t}</span>`).join('') : ''}</div></div>
+  ${d.tpl === 'propio' ? `<p class="hint" style="margin:0">Arrastra cada etiqueta amarilla al lugar donde debe ir ese dato.</p>` : ''}
+  <h3>Diseño</h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">${TPLS.map(t => `<button class="card" data-tpl="${t.k}" style="text-align:left;cursor:pointer;${d.tpl === t.k ? 'border:2px solid var(--ink);background:var(--mist)' : ''}"><b style="display:block">${t.t}</b><span class="hint">${t.d}</span></button>`).join('')}</div>
+  ${d.tpl === 'propio' ? `<div class="card soft stack"><b>Imagen de tu membrete</b><span class="hint">Una imagen horizontal (proporción 3:2, como 10 × 6,7 cm) con tu logo y diseño, sin los datos del cliente. Puedes hacerla en Canva.</span><div class="row"><label class="btn sm pri">Subir imagen<input type="file" accept="image/*" id="dBg" hidden></label>${d.bg ? '<button class="btn sm ghost" id="dBgX">Quitar</button>' : ''}</div></div>` : ''}
+  <h3>Letra</h3>
+  <div class="field"><label for="dFont">Tipo de letra</label><select id="dFont">${FONTS.map(f => `<option value="${f.k}" ${d.font === f.k ? 'selected' : ''} style="font-family:'${f.k}'">${f.k}</option>`).join('')}</select></div>
+  <div class="field"><label for="dSize">Tamaño del texto: <span id="dSizeV">${Math.round(d.scale * 100)}%</span></label><input id="dSize" type="range" min="70" max="150" step="5" value="${Math.round(d.scale * 100)}" style="width:100%;accent-color:#111"></div>
+  <div class="row"><label class="btn sm" style="gap:8px"><input type="checkbox" id="dBold" ${d.bold ? 'checked' : ''} style="width:18px;height:18px;accent-color:#111"> Negrita</label>
+  ${d.tpl !== 'propio' ? `<label class="btn sm" style="gap:8px"><input type="checkbox" id="dBorder" ${d.border ? 'checked' : ''} style="width:18px;height:18px;accent-color:#111"> Borde</label>` : ''}
+  ${d.tpl === 'clasico' ? `<label class="btn sm" style="gap:8px"><input type="checkbox" id="dIcons" ${d.icons ? 'checked' : ''} style="width:18px;height:18px;accent-color:#111"> Íconos</label>` : ''}
+  <label class="btn sm" style="gap:8px"><input type="checkbox" id="dNum" ${d.num ? 'checked' : ''} style="width:18px;height:18px;accent-color:#111"> N° de pedido</label></div>
+  <div class="grid2"><div class="field"><label for="dColor">Color del texto</label><input id="dColor" type="color" value="${esc(d.color)}" style="padding:4px;height:48px"></div>
+  <div class="field"><label for="dAcc">Color de detalles</label><input id="dAcc" type="color" value="${esc(d.accent)}" style="padding:4px;height:48px"></div></div>
+  <button class="btn pri big block" id="dSave">${I.check} Guardar diseño</button>
+  <div class="grid2"><button class="btn sm" id="dSheet">Ver hoja completa</button><button class="btn sm ghost" id="dReset">Restaurar original</button></div>`;
+}
+let pvTimer;
+function redrawPv(){ clearTimeout(pvTimer); pvTimer = setTimeout(async () => { const c = $('#lblPv'); if(c) await drawLabel(c, sampleOrder(), lblDraft); }, 60); }
+function bindDis(){
+  const d = lblDraft; redrawPv();
+  $$('[data-tpl]').forEach(b => b.onclick = () => { d.tpl = b.dataset.tpl; render(); });
+  $('#dFont').onchange = e => { d.font = e.target.value; redrawPv(); };
+  $('#dSize').oninput = e => { d.scale = e.target.value / 100; $('#dSizeV').textContent = e.target.value + '%'; redrawPv(); };
+  $('#dBold').onchange = e => { d.bold = e.target.checked; redrawPv(); };
+  const bo = $('#dBorder'); if(bo) bo.onchange = e => { d.border = e.target.checked; redrawPv(); };
+  const ic = $('#dIcons'); if(ic) ic.onchange = e => { d.icons = e.target.checked; redrawPv(); };
+  $('#dNum').onchange = e => { d.num = e.target.checked; redrawPv(); };
+  $('#dColor').oninput = e => { d.color = e.target.value; redrawPv(); };
+  $('#dAcc').oninput = e => { d.accent = e.target.value; redrawPv(); };
+  const bg = $('#dBg'); if(bg) bg.onchange = async e => { const f = e.target.files[0]; if(!f) return; try{ const im = await fileToImage(f); const c = document.createElement('canvas'); const r = Math.min(1, 1600 / Math.max(im.width, im.height)); c.width = Math.round(im.width * r); c.height = Math.round(im.height * r); const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height); d.bg = c.toDataURL('image/jpeg', .9); render(); toast('Imagen cargada: ahora ubica los datos'); }catch(_){ toast('No se pudo leer la imagen'); } };
+  const bx = $('#dBgX'); if(bx) bx.onclick = () => { d.bg = ''; render(); };
+  $('#dSave').onclick = async () => { cfg.lbl = JSON.parse(JSON.stringify(d)); await saveCfg(); toast('Diseño guardado'); lblDraft = null; go('mas'); };
+  $('#dReset').onclick = () => confirmSheet('Restaurar diseño', 'Volverá al diseño clásico con letra Arial. Tu imagen de membrete propia se quitará.', 'Restaurar', () => { lblDraft = defaultLbl(); render(); });
+  $('#dSheet').onclick = async () => { const keep = cfg.lbl; cfg.lbl = d; const q = orders.filter(o => !o.impreso).sort((a, b) => a.num - b.num); const list = q.length ? q : [{...sampleOrder(), demo:true}]; previewSheet(list); setTimeout(() => { cfg.lbl = keep; }, 4000); };
+  // arrastrar campos (diseño propio)
+  const box = $('#pvBox');
+  $$('.dragf', box).forEach(el => {
+    el.addEventListener('pointerdown', ev => { ev.preventDefault(); el.setPointerCapture(ev.pointerId); el.classList.add('on');
+      const rc = box.getBoundingClientRect(); const sx = ev.clientX, sy = ev.clientY; const k = el.dataset.k; const p0 = {...d.pos[k]};
+      const mv = e2 => { const nx = Math.min(.95, Math.max(0, p0.x + (e2.clientX - sx) / rc.width)), ny = Math.min(.99, Math.max(.06, p0.y + (e2.clientY - sy) / rc.height)); d.pos[k] = {x:nx, y:ny}; el.style.left = nx * 100 + '%'; el.style.top = ny * 100 + '%'; redrawPv(); };
+      const up = () => { el.classList.remove('on'); el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
+      el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); });
+  });
 }
 
 /* ---------- CLIENTES ---------- */
@@ -923,6 +1051,7 @@ function vMas(){
   const it = (r, ic, t, d) => `<div class="item" onclick="go('${r}')"><div class="badge">${small(ic, 22)}</div><div class="nm"><b>${t}</b><small>${d}</small></div>${small(I.right)}</div>`;
   return `<h2>Más</h2><div class="list">
   ${it('cfg', I.doc, 'Mi marca y descuentos', 'Logo, nombre, N° de pedido, niveles y reglas de descuento')}
+  ${it('dis', I.print, 'Diseño del membrete', 'Elige un diseño o usa el tuyo, tipo y tamaño de letra')}
   ${it('msg', I.wa, 'Mensajes de WhatsApp', 'Pedido recibido, enviado, entregado y promoción')}
   ${lic.role === 'owner' ? it('adm', I.lock, 'Administrador', 'Crea códigos mensuales o anuales para otros negocios') : ''}
   </div>

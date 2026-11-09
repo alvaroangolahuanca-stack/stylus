@@ -281,6 +281,9 @@ section.blk{padding-block:34px}
 .qr img{width:100%;height:100%;object-fit:contain}
 ol.how{text-align:left;margin:0;padding-left:22px;display:grid;gap:8px;font-size:15.5px}
 .timer{font-weight:800;font-variant-numeric:tabular-nums}
+.done{width:72px;height:72px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center}
+.done svg{width:40px;height:40px}
+.bignum{font:clamp(30px,9vw,42px)/1 var(--display);letter-spacing:1px}
 
 /* Pie */
 footer{background:var(--ink);color:#d9d6cf;margin-top:30px;padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))}
@@ -301,7 +304,7 @@ footer .legal{border-top:1px solid #333;padding-block:16px;font-size:13px}
 .arow b{display:block;line-height:1.2}
 .st{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--soft);white-space:nowrap}
 .st.disponible{background:#E3F4EA;color:var(--ok)} .st.reservado{background:#FDF0DA;color:#8A5300} .st.vendido{background:#F9E1DF;color:var(--sold)} .st.oculto{background:var(--soft);color:var(--muted)}
-.st.pendiente{background:#FDF0DA;color:#8A5300} .st.pagado{background:#E3F4EA;color:var(--ok)} .st.cancelado{background:var(--soft);color:var(--muted)}
+.st.pendiente{background:#FDF0DA;color:#8A5300} .st.reportado{background:#E2ECFB;color:#1F4E9A} .st.pagado{background:#E3F4EA;color:var(--ok)} .st.cancelado{background:var(--soft);color:var(--muted)}
 .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .pgrid .pp{position:relative;aspect-ratio:4/5;border-radius:12px;overflow:hidden;background:var(--soft)}
 .pgrid .pp img{width:100%;height:100%;object-fit:cover}
@@ -405,7 +408,8 @@ function realAPI(){
       if(status === 'cancelado') await sb.from('productos').update({status:'disponible', reservado_hasta:null, pedido:null}).in('id', ids(o)).eq('pedido', o.codigo);
       if(status === 'pendiente') await sb.from('productos').update({status:'reservado', pedido:o.codigo, reservado_hasta:new Date(Date.now() + 864e5).toISOString()}).in('id', ids(o));
     },
-    async saveSettings(d){ const {error} = await sb.from('ajustes').update({datos:d}).eq('id', 1); if(error) fail(error); }
+    async saveSettings(d){ const {error} = await sb.from('ajustes').update({datos:d}).eq('id', 1); if(error) fail(error); },
+    async reportPay(codigo, cel){ const r = await fetch(`${CFG.url}/rest/v1/rpc/reportar_pago`, {method:'POST', keepalive:true, headers:{'apikey':CFG.key, 'Content-Type':'application/json'}, body:JSON.stringify({p_codigo:codigo, p_cel:cel})}); if(!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); }
   };
 }
 function demoAPI(){
@@ -442,7 +446,10 @@ function demoAPI(){
     async orders(){ return db().orders; },
     async setOrder(o, status){ const x = db(); const oo = x.orders.find(q => q.id === o.id); oo.status = status; const ids = o.items.map(i => i.id);
       x.products.forEach(p => { if(!ids.includes(p.id)) return; if(status === 'pagado') p.status = 'vendido'; if(status === 'cancelado' && p.pedido === o.codigo){ p.status = 'disponible'; p.reservado_hasta = null; p.pedido = null; } if(status === 'pendiente'){ p.status = 'reservado'; p.pedido = o.codigo; p.reservado_hasta = new Date(Date.now() + 864e5).toISOString(); } }); save(x); },
-    async saveSettings(d){ const x = db(); x.settings = d; save(x); }
+    async saveSettings(d){ const x = db(); x.settings = d; save(x); },
+    async reportPay(codigo){ const x = db(); const o = x.orders.find(q => q.codigo === codigo); if(!o) return {ok:false, motivo:'no_existe'}; if(o.status !== 'pendiente') return {ok:o.status === 'reportado' || o.status === 'pagado', status:o.status};
+      const ids = o.items.map(i => i.id); if(x.products.some(p => ids.includes(p.id) && (p.status === 'vendido' || (p.pedido && p.pedido !== codigo)))) return {ok:false, motivo:'tomada'};
+      x.products.forEach(p => { if(ids.includes(p.id)){ p.status = 'vendido'; p.reservado_hasta = null; p.pedido = codigo; } }); o.status = 'reportado'; save(x); return {ok:true, status:'reportado'}; }
   };
 }
 const API = window.__STYLUS_API || (DEMO ? demoAPI() : realAPI());
@@ -724,28 +731,58 @@ function bindCheckout(){
 }
 function orderMsg(o){
   const d = o.comprador || {};
-  return `🛍️ *PEDIDO ${o.codigo}* – STYLUS\nNombre: ${d.nombre}\nC.I.: ${d.ci}\nCelular: ${d.cel}\nCiudad: ${d.ciudad}\n—\n${(o.items || []).map(i => `• ${i.titulo} (Talla ${i.talla || '–'}) – ${bs(i.precio)}`).join('\n')}\n*Total: ${bs(o.total)}*\n\n✅ Ya pagué con QR. Adjunto mi comprobante.`;
+  return `🛍️ *PEDIDO ${o.codigo}* – STYLUS\nNombre: ${d.nombre}\nC.I.: ${d.ci}\nCelular: ${d.cel}\nCiudad: ${d.ciudad}\n—\n${(o.items || []).map(i => `• ${i.titulo} (Talla ${i.talla || '–'}) – ${bs(i.precio)}`).join('\n')}\n*Total: ${bs(o.total)}*\n\n✅ Ya realicé el pago con QR. Adjunto mi comprobante.`;
 }
 function vOrder(){
   const o = LS.get('stylus_order', null);
   if(!o) return `<div class="wrap empty"><b>No hay un pedido en curso</b><br><a class="btn" href="#tienda">Ver la tienda</a></div>`;
-  return `<div class="wrap" style="padding-top:18px"><div class="stepper"><span>1 · Tus datos</span><span class="on">2 · Pago QR</span><span class="on">3 · Comprobante</span></div></div>
-  <div class="wrap co"><div class="box paybox"><span class="eyebrow">Tu código de pedido</span><div class="code">${esc(o.codigo)}</div>
+  const paso = o.paso || 0, num = digits(S.whatsapp).slice(-8);
+  const qrBox = `<div class="qr">${S.qr && !qrExpired() ? `<img src="${esc(S.qr)}" alt="QR de pago STYLUS">` : S.qr ? `<span class="muted" style="padding:20px">Estamos renovando nuestro QR. Escríbenos por WhatsApp al ${esc(num)} y te lo enviamos al instante.</span>` : `<span class="muted" style="padding:20px">${DEMO ? 'Aquí aparecerá el QR de Yasta – Banco Unión (modo demostración).' : 'El QR de pago aún no fue cargado. Escríbenos por WhatsApp y te lo enviamos.'}</span>`}</div>`;
+  const check = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+  let main;
+  if(paso === 0) main = `<span class="eyebrow">Tu código de pedido</span><div class="code">${esc(o.codigo)}</div>
     <div><span class="muted">Monto exacto a pagar</span><div class="price" style="font-size:34px">${bs(o.total)}</div></div>
-    <div class="qr">${S.qr && !qrExpired() ? `<img src="${esc(S.qr)}" alt="QR de pago STYLUS">` : S.qr ? `<span class="muted" style="padding:20px">Estamos renovando nuestro QR. Toca el botón verde y te lo enviamos por WhatsApp al instante.</span>` : `<span class="muted" style="padding:20px">${DEMO ? 'Aquí aparecerá el QR de Yasta – Banco Unión (modo demostración).' : 'El QR de pago aún no fue cargado. Escríbenos por WhatsApp y te lo enviamos.'}</span>`}</div>
+    ${qrBox}
     <span class="muted" style="font-size:14px">A nombre de <b>${esc(S.titular)}</b> · ${esc(S.banco)}</span>
     ${S.qr && !qrExpired() ? `<button class="btn out sm" id="qDl">Guardar QR en mi galería</button>` : ''}
-    <ol class="how"><li>Abre la app de tu banco o billetera y elige <b>Pagar con QR</b>.</li><li>Escanea el QR (o súbelo desde tu galería) y paga <b>${bs(o.total)}</b>.</li><li>Toca el botón verde y <b>adjunta la captura</b> de tu comprobante en WhatsApp.</li></ol>
-    <a class="btn wa block" id="oWA" href="${waLink(orderMsg(o))}" target="_blank" rel="noopener">${I.wa} Enviar comprobante por WhatsApp</a>
-    <p class="muted" style="margin:0;font-size:14px">Tus prendas están reservadas por <span class="timer" id="tmr">—</span>. Si no recibimos el pago, vuelven a la tienda.</p></div>
+    <ol class="how"><li>Abre la app de tu banco o billetera y elige <b>Pagar con QR</b>.</li><li>Escanea el QR (o súbelo desde tu galería) y paga <b>${bs(o.total)}</b>.</li><li>Cuando termines, toca <b>Ya realicé el pago</b>.</li></ol>
+    <button class="btn block" id="oPaid" type="button">✓ Ya realicé el pago</button>
+    <p class="muted" style="margin:0;font-size:14px">Tus prendas están reservadas por <span class="timer" id="tmr">—</span>. Si no recibimos el pago, vuelven a la tienda.</p>`;
+  else if(paso === 1) main = `<span class="eyebrow">Último paso · Pedido ${esc(o.codigo)}</span><h2 style="font-size:30px;margin:0">Envía tu comprobante</h2>
+    <p style="margin:0">Envía la <b>captura de tu pago</b> por WhatsApp al número del vendedor:</p>
+    <div class="bignum">${esc(num.replace(/(\d{4})(\d{4})/, '$1 $2'))}</div>
+    <ol class="how"><li>Toca el botón verde: se abre WhatsApp con tu pedido ya escrito.</li><li>Adjunta la captura del pago (📎 o 📷) y envía el mensaje.</li></ol>
+    <a class="btn wa block" id="oWA" href="${waLink(orderMsg(o))}" target="_blank" rel="noopener">${I.wa} Enviar comprobante al ${esc(num)}</a>
+    <button class="link" id="oBack" type="button" style="background:none;border:0;cursor:pointer;font:inherit">← Volver a ver el QR</button>`;
+  else if(o.tomada) main = `<span class="eyebrow">Pedido ${esc(o.codigo)}</span><h2 style="font-size:28px;margin:0">Revisaremos tu pago</h2>
+    <p style="margin:0">Se terminó el tiempo de reserva y una de tus prendas pasó a otro pedido. Con tu comprobante revisamos tu caso por WhatsApp y, si la prenda ya no está disponible, te devolvemos tu dinero.</p>
+    <a class="btn wa block" href="${waLink(orderMsg(o))}" target="_blank" rel="noopener">${I.wa} Escribir al ${esc(num)}</a>`;
+  else main = `<div class="done">${check}</div>
+    <span class="eyebrow">Pedido ${esc(o.codigo)}</span><h2 style="font-size:30px;margin:0">¡Gracias por tu compra!</h2>
+    <p style="margin:0">Tu prenda ya figura como <b>VENDIDA</b> a tu nombre. Cuando revisemos tu comprobante te confirmamos por WhatsApp y despachamos por flota en 1 día hábil.</p>
+    <a class="btn wa block" href="${waLink(orderMsg(o))}" target="_blank" rel="noopener">${I.wa} Volver a enviar el comprobante</a>
+    <a class="btn out block" href="#tienda">Seguir viendo prendas</a>`;
+  return `<div class="wrap" style="padding-top:18px"><div class="stepper"><span>1 · Tus datos</span><span class="on">2 · Pago QR</span><span class="${paso ? 'on' : ''}">3 · Comprobante</span></div></div>
+  <div class="wrap co"><div class="box paybox">${main}</div>
   <div class="box"><h3 style="font-size:20px">Tu pedido</h3>${(o.items || []).map(i => `<div class="citem"><img src="${esc(i.foto || 'img/icon-512.png')}" alt=""><div><b>${esc(i.titulo)}</b><span class="muted" style="font-size:13px">Talla ${esc(i.talla || '–')}</span></div><b class="num">${bs(i.precio)}</b></div>`).join('')}
-  <div class="tot"><span>Total</span><span class="num">${bs(o.total)}</span></div><div class="note"><b>Envío a ${esc((o.comprador || {}).ciudad || '')}</b><br>${esc(S.envio_texto)}</div><a class="link" href="#tienda" style="justify-self:start">Seguir viendo prendas</a></div></div>`;
+  <div class="tot"><span>Total</span><span class="num">${bs(o.total)}</span></div><div class="note"><b>Envío a ${esc((o.comprador || {}).ciudad || '')}</b><br>${esc(S.envio_texto)}</div>${paso === 2 ? '' : '<a class="link" href="#tienda" style="justify-self:start">Seguir viendo prendas</a>'}</div></div>`;
 }
 function bindOrder(){
   const o = LS.get('stylus_order', null); if(!o) return;
-  const t = $('#tmr'); const tick = () => { const ms = new Date(o.vence) - new Date(); if(!t || !document.body.contains(t)) return clearInterval(window.__tm); if(ms <= 0){ t.closest('p').innerHTML = '<b>Se terminó el tiempo de reserva.</b> Si ya pagaste, igual envíanos tu comprobante y te confirmamos. Si no, tus prendas pueden volver a la tienda.'; clearInterval(window.__tm); return; } const h = Math.floor(ms / 36e5), m = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60; t.textContent = `${h ? h + ' h ' : ''}${String(m).padStart(2, '0')} min ${String(s).padStart(2, '0')} s`; };
-  tick(); clearInterval(window.__tm); window.__tm = setInterval(tick, 1000);
+  const setPaso = (n, extra) => { LS.set('stylus_order', {...o, ...(extra || {}), paso:n}); render(); window.scrollTo(0, 0); };
+  const t = $('#tmr');
+  if(t){ const tick = () => { const ms = new Date(o.vence) - new Date(); if(!t || !document.body.contains(t)) return clearInterval(window.__tm); if(ms <= 0){ t.closest('p').innerHTML = '<b>Se terminó el tiempo de reserva.</b> Si ya pagaste, toca <b>Ya realicé el pago</b> y envíanos tu comprobante.'; clearInterval(window.__tm); return; } const h = Math.floor(ms / 36e5), m = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60; t.textContent = `${h ? h + ' h ' : ''}${String(m).padStart(2, '0')} min ${String(s).padStart(2, '0')} s`; };
+    tick(); clearInterval(window.__tm); window.__tm = setInterval(tick, 1000); }
   const q = $('#qDl'); if(q) q.onclick = async () => { try{ const b = await (await fetch(S.qr)).blob(); const f = new File([b], 'QR_STYLUS.png', {type:b.type || 'image/png'}); if(navigator.canShare && navigator.canShare({files:[f]})){ await navigator.share({files:[f]}); return; } const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'QR_STYLUS.png'; a.click(); }catch(e){ window.open(S.qr, '_blank'); } };
+  const pd = $('#oPaid'); if(pd) pd.onclick = () => setPaso(1);
+  const bk = $('#oBack'); if(bk) bk.onclick = () => setPaso(0);
+  const wa = $('#oWA');
+  if(wa) wa.onclick = () => {
+    // WhatsApp se abre con el enlace normal; en paralelo la prenda se marca como vendida.
+    API.reportPay(o.codigo, (o.comprador || {}).cel || '')
+      .then(r => { setPaso(2, {tomada:!!(r && r.motivo === 'tomada')}); load(); })
+      .catch(() => setPaso(2, {tomada:false}));
+  };
 }
 
 /* ---------- AYUDA ---------- */
@@ -762,14 +799,14 @@ function vHelp(){
 /* =========================================================
    PANEL DE ADMINISTRACIÓN
    ========================================================= */
-let admTab = 'prendas', admQ = '', admSt = 'todas', admOrders = [], ordSt = 'pendiente', edit = null;
+let admTab = 'prendas', admQ = '', admSt = 'todas', admOrders = [], ordSt = 'reportado', edit = null;
 async function vAdmin(sub){
   if(!ADMIN) ADMIN = await API.session();
   if(!ADMIN) return `<div class="wrap adm" style="max-width:460px"><h1 style="font-size:40px">Administrar</h1>${DEMO ? '<div class="note">Modo demostración: escribe cualquier correo y contraseña para probar el panel.</div>' : ''}
     <form class="box form" id="lgF"><div class="field"><label for="lE">Correo</label><input id="lE" type="email" autocomplete="username" required></div><div class="field"><label for="lP">Contraseña</label><input id="lP" type="password" autocomplete="current-password" required></div><p class="err" id="lErr"></p><button class="btn block" type="submit">Entrar</button></form></div>`;
   if(!(admTab === 'editar' && edit)) admTab = (sub || 'prendas').split('/')[0];
   if(admTab === 'pedidos') try{ admOrders = await API.orders(); }catch(e){ admOrders = []; }
-  const pend = admTab === 'pedidos' ? admOrders.filter(o => o.status === 'pendiente').length : null;
+  const pend = admTab === 'pedidos' ? admOrders.filter(o => o.status === 'reportado').length : null;
   const tabs = `<div class="row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h1 style="font-size:34px">Panel STYLUS</h1><div style="display:flex;gap:8px"><a class="btn out sm" href="#">Ver tienda</a><button class="btn out sm" id="aOut">Salir</button></div></div>
   <div class="atabs"><a class="chip ${admTab === 'prendas' ? 'on' : ''}" href="#admin/prendas">Prendas (${P.length})</a><a class="chip ${admTab === 'pedidos' ? 'on' : ''}" href="#admin/pedidos">Pedidos${pend ? ` (${pend})` : ''}</a><a class="chip ${admTab === 'ajustes' ? 'on' : ''}" href="#admin/ajustes">Ajustes</a></div>`;
   let body = '';
@@ -782,13 +819,13 @@ async function vAdmin(sub){
     ${list.length ? `<div style="display:grid;gap:8px">${list.map(p => { const st = p.status === 'reservado' && isAvail(p) ? 'disponible' : p.status; return `<div class="arow" data-ed="${p.id}"><img src="${esc(cover(p))}" alt=""><div><b>${esc(p.titulo)}</b><span class="muted" style="font-size:13px">${bs(p.precio)} · Talla ${esc(p.talla || '–')} · ${esc(CAT[p.categoria] || '')}</span></div><span class="st ${st}">${st}</span></div>`; }).join('')}</div>` : '<div class="empty"><b>Sin prendas</b>Toca “Nueva prenda” para subir la primera.</div>'}`;
   } else if(admTab === 'pedidos'){
     const list = admOrders.filter(o => ordSt === 'todos' || o.status === ordSt);
-    body = `<div class="chips">${[['pendiente', 'Por confirmar'], ['pagado', 'Pagados'], ['cancelado', 'Cancelados'], ['todos', 'Todos']].map(([k, l]) => `<button class="chip ${ordSt === k ? 'on' : ''}" data-os="${k}">${l} (${admOrders.filter(o => k === 'todos' || o.status === k).length})</button>`).join('')}</div>
+    body = `<div class="chips">${[['reportado', 'Comprobante enviado'], ['pendiente', 'Sin pagar'], ['pagado', 'Confirmados'], ['cancelado', 'Cancelados'], ['todos', 'Todos']].map(([k, l]) => `<button class="chip ${ordSt === k ? 'on' : ''}" data-os="${k}">${l} (${admOrders.filter(o => k === 'todos' || o.status === k).length})</button>`).join('')}</div>
     ${list.length ? list.map(o => `<div class="ocard"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font:22px var(--display)">${esc(o.codigo)}</b><span class="st ${o.status}">${o.status}</span></div>
       <div><b>${esc(o.nombre)}</b> · ${esc(o.ciudad)}<br><span class="muted" style="font-size:14px">C.I. ${esc(o.ci)} · Cel. ${esc(o.cel)} · ${new Date(o.creado).toLocaleString('es-BO', {dateStyle:'medium', timeStyle:'short'})}</span>${o.nota ? `<br><span class="muted" style="font-size:14px">Nota: ${esc(o.nota)}</span>` : ''}</div>
       <div class="its">${(o.items || []).map(i => `<img src="${esc(i.foto || 'img/icon-512.png')}" alt="${esc(i.titulo)}" title="${esc(i.titulo)}">`).join('')}</div>
       <div style="font-size:14px">${(o.items || []).map(i => `• ${esc(i.titulo)} (${esc(i.talla || '–')}) – ${bs(i.precio)}`).join('<br>')}</div><div class="tot"><span>Total</span><span>${bs(o.total)}</span></div>
-      <div class="bt">${o.status === 'pendiente' ? `<button class="btn sm" data-ok="${o.id}">✓ Pago recibido</button><button class="btn out sm" data-cx="${o.id}">Cancelar</button>` : o.status === 'cancelado' ? `<button class="btn out sm" data-re="${o.id}">Reactivar</button>` : ''}
-      <a class="btn wa sm" href="${waLink(o.status === 'pagado' ? `¡Hola ${o.nombre.split(' ')[0]}! 🙌 Confirmamos el pago de tu pedido *${o.codigo}*. Lo despachamos por flota a ${o.ciudad} en 1 día hábil. ¡Gracias por comprar en STYLUS!` : `¡Hola ${o.nombre.split(' ')[0]}! 👋 Te escribimos de STYLUS por tu pedido *${o.codigo}* (${bs(o.total)}).`, '591' + digits(o.cel).slice(-8))}" target="_blank" rel="noopener">${I.wa} Cliente</a>
+      <div class="bt">${o.status === 'reportado' ? `<span class="muted" style="font-size:13px;flex-basis:100%">El cliente indica que pagó y la prenda ya figura como vendida. Revisa el comprobante en WhatsApp y en tu Yasta.</span><button class="btn sm" data-ok="${o.id}">✓ Comprobante OK</button><button class="btn out sm" data-cx="${o.id}">No pagó · liberar prenda</button>` : o.status === 'pendiente' ? `<button class="btn sm" data-ok="${o.id}">✓ Pago recibido</button><button class="btn out sm" data-cx="${o.id}">Cancelar</button>` : o.status === 'cancelado' ? `<button class="btn out sm" data-re="${o.id}">Reactivar</button>` : ''}
+      <a class="btn wa sm" href="${waLink(o.status === 'pagado' || o.status === 'reportado' ? `¡Hola ${o.nombre.split(' ')[0]}! 🙌 Confirmamos el pago de tu pedido *${o.codigo}*. Lo despachamos por flota a ${o.ciudad} en 1 día hábil. ¡Gracias por comprar en STYLUS!` : `¡Hola ${o.nombre.split(' ')[0]}! 👋 Te escribimos de STYLUS por tu pedido *${o.codigo}* (${bs(o.total)}).`, '591' + digits(o.cel).slice(-8))}" target="_blank" rel="noopener">${I.wa} Cliente</a>
       <button class="btn out sm" data-cp="${o.id}">Copiar para app STYLUS</button></div></div>`).join('') : '<div class="empty"><b>Sin pedidos aquí</b></div>'}`;
   } else if(admTab === 'ajustes'){
     const f = (id, l, v, t='text', ph='') => `<div class="field"><label for="${id}">${l}</label><input id="${id}" type="${t}" value="${esc(v ?? '')}" placeholder="${esc(ph)}"></div>`;

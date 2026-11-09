@@ -167,6 +167,10 @@ section.blk{padding-block:34px}
 /* Catálogo */
 .ctop{padding-block:22px 6px;display:flex;flex-direction:column;gap:12px}
 .ctop h1{font-size:clamp(38px,10vw,72px)}
+.dests{display:flex;flex-wrap:wrap;gap:8px}
+.dchk{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--line);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:600;cursor:pointer;background:var(--paper)}
+.dchk:has(input:checked){border-color:var(--ink);background:var(--ink);color:#fff}
+.dchk input{accent-color:#fff;margin:0}
 .chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;border:2px solid var(--line);background:var(--paper);border-radius:999px;padding:8px 14px;font-weight:800;font-size:13px;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;white-space:nowrap;text-decoration:none}
@@ -349,9 +353,10 @@ const CAT = Object.fromEntries(CATS.map(c => [c.k, c.t]));
 const ESTADOS = {como_nuevo:'Como nueva', muy_bueno:'Muy buen estado', bueno:'Buen estado'};
 const GEN = {hombre:'Hombre', mujer:'Mujer', unisex:'Unisex'};
 const TALLAS = ['XS','S','M','L','XL','XXL','XXXL'];
+const DESTINOS_BASE = ['La Paz','La Paz Sud','El Alto','Potosí','Sucre','Cochabamba','Tarija','Santa Cruz','Villamontes','Yacuiba','Villazón','Uyuni','Atocha','Tupiza','Challapata','Llallagua','Quillacollo'];
 const CIUDADES = ['La Paz','El Alto','Cochabamba','Santa Cruz','Oruro','Potosí','Sucre','Tarija','Trinidad','Cobija','Quillacollo','Sacaba','Montero','Warnes','Yacuiba','Riberalta','Uyuni','Villazón','Tupiza','Llallagua','Huanuni','Challapata','Caracollo','Viacha','Camiri','Bermejo','Villamontes','Guayaramerín','Punata','Copacabana','Caranavi'];
 const DEFAULT_SET = {whatsapp:'59174126858', ciudad:'Oruro', instagram:'', tiktok:'', qr:'img/qr-yasta.jpg', qr_vence:'2026-12-07', titular:'Marcelo Angola Cuenca', banco:'Yasta – Banco Unión',
-  anuncio:'ENVÍOS A TODA BOLIVIA POR FLOTA · PIEZAS ÚNICAS · PAGO CON QR', drop_fecha:null, drop_texto:'Nuevo drop', reserva_min:5,
+  anuncio:'ENVÍOS A TODA BOLIVIA POR FLOTA · PIEZAS ÚNICAS · PAGO CON QR', drop_fecha:null, drop_texto:'Nuevo drop', reserva_min:5, destinos:DESTINOS_BASE.slice(), destinos_extra:[],
   envio_texto:'Enviamos a toda Bolivia por flota. El envío es por cobrar: lo pagas al recoger tu paquete. Despachamos en 1 día hábil después de confirmar tu pago.',
   cambios_texto:'Revisa bien las fotos y medidas: cada prenda es única. Solo aceptamos cambios en casos excepcionales (por ejemplo, si la prenda no coincide con la descripción). Escríbenos por WhatsApp dentro de las 48 horas de recibirla.'};
 
@@ -361,6 +366,7 @@ const $$ = (s, r=document) => [...r.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const bs = n => 'Bs ' + Number(n || 0).toLocaleString('es-BO', {maximumFractionDigits:2});
 const digits = s => String(s || '').replace(/\D/g, '');
+const destinos = () => (Array.isArray(S.destinos) && S.destinos.length ? S.destinos : DESTINOS_BASE).slice().sort((a, b) => a.localeCompare(b, 'es'));
 const LS = {get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }, set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }};
 let toastT;
 function toast(m){ let t = $('.toast'); if(!t){ t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); } t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
@@ -705,7 +711,7 @@ function vCheckout(){
   <div class="wrap co"><form class="box form" id="coF" novalidate><h2 style="font-size:28px">Datos de envío</h2><p class="muted" style="margin:0">Son los datos que pondremos en el paquete para la flota.</p>
     <div class="field"><label for="cN">Nombre completo</label><input id="cN" autocomplete="name" value="${esc(d.nombre || '')}" required></div>
     <div class="two"><div class="field"><label for="cI">C.I.</label><input id="cI" value="${esc(d.ci || '')}" inputmode="text" required></div><div class="field"><label for="cT">Celular (WhatsApp)</label><input id="cT" value="${esc(d.cel || '')}" inputmode="tel" autocomplete="tel" placeholder="7xxxxxxx" required></div></div>
-    <div class="field"><label for="cC">Ciudad de destino</label><input id="cC" list="dlC" value="${esc(d.ciudad || '')}" placeholder="Ej.: Cochabamba" required><datalist id="dlC">${CIUDADES.map(c => `<option value="${c}">`).join('')}</datalist></div>
+    <div class="field"><label for="cC">Ciudad de destino</label><select id="cC" required><option value="">Elige tu destino…</option>${destinos().map(c => `<option ${c === d.ciudad ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select><span class="muted" style="font-size:13px">Solo enviamos a estos destinos por flota. ¿Tu ciudad no está? Escríbenos por WhatsApp.</span></div>
     <div class="note">${I.truck.replace('<svg', '<svg width="20" height="20" style="vertical-align:-4px;margin-right:6px"')}${esc(S.envio_texto)}</div>
     <p class="err" id="coErr">${esc(coErr)}</p>
     <button class="btn block" id="coGo" type="submit" ${coBusy ? 'disabled' : ''}>${coBusy ? 'Reservando…' : `Confirmar y pagar ${bs(total)}`}</button></form>
@@ -716,7 +722,7 @@ function bindCheckout(){
   const f = $('#coF'); if(!f) return;
   f.onsubmit = async e => {
     e.preventDefault(); const d = {nombre:$('#cN').value.trim(), ci:$('#cI').value.trim(), cel:digits($('#cT').value).replace(/^591/, ''), ciudad:$('#cC').value.trim(), nota:''};
-    const err = !d.nombre || d.nombre.split(/\s+/).length < 2 ? 'Escribe tu nombre y apellido.' : !d.ci ? 'Escribe tu C.I.' : !/^[67]\d{7}$/.test(d.cel) ? 'Revisa tu celular: 8 dígitos que empiezan con 6 o 7.' : !d.ciudad ? 'Escribe tu ciudad de destino.' : '';
+    const err = !d.nombre || d.nombre.split(/\s+/).length < 2 ? 'Escribe tu nombre y apellido.' : !d.ci ? 'Escribe tu C.I.' : !/^[67]\d{7}$/.test(d.cel) ? 'Revisa tu celular: 8 dígitos que empiezan con 6 o 7.' : !d.ciudad || !destinos().includes(d.ciudad) ? 'Elige tu ciudad de destino de la lista.' : '';
     if(err){ $('#coErr').textContent = err; return; }
     LS.set('stylus_buyer', d); coBusy = true; coErr = ''; $('#coGo').disabled = true; $('#coGo').textContent = 'Reservando…';
     try{
@@ -833,6 +839,9 @@ async function vAdmin(sub){
     body = `<form class="box form" id="sF"><h3 style="font-size:20px">Contacto y redes</h3>${f('sW', 'WhatsApp de la tienda', fmtTel(S.whatsapp), 'tel')}<div class="two">${f('sIg', 'Instagram (usuario)', S.instagram, 'text', 'stylus.bo')}${f('sTk', 'TikTok (usuario)', S.tiktok, 'text', 'stylus.bo')}</div>${f('sCi', 'Ciudad', S.ciudad)}
     <h3 style="font-size:20px">Pago con QR</h3><div style="display:flex;gap:12px;align-items:center"><div class="qr" style="width:120px;padding:6px">${S.qr ? `<img src="${esc(S.qr)}" alt="QR">` : '<span class="muted" style="font-size:12px;text-align:center">Sin QR</span>'}</div><div style="display:grid;gap:8px"><label class="btn out sm">Subir imagen del QR<input type="file" accept="image/*" id="sQr" hidden></label><span class="muted" style="font-size:13px">En la app Yasta: Cobrar → QR → Compartir / Guardar imagen.</span></div></div>
     <div class="two">${f('sTi', 'Titular', S.titular)}${f('sBa', 'Banco / billetera', S.banco)}</div><div class="two">${f('sQv', 'El QR vence el', S.qr_vence || '', 'date')}${f('sRh', 'Minutos de reserva para pagar', S.reserva_min ?? 5, 'number')}</div><span class="muted" style="font-size:13px">Al generar el QR en Yasta, elige la vigencia más larga posible y anota aquí la fecha de vencimiento.</span>
+    <h3 style="font-size:20px">Destinos de envío</h3><span class="muted" style="font-size:13px">Los clientes solo pueden elegir los destinos marcados. Marca o desmarca según las salidas de flota que tengas.</span>
+    <div class="dests" id="sDs">${destPool().map(c => `<label class="dchk"><input type="checkbox" value="${esc(c)}" ${destinos().includes(c) ? 'checked' : ''}> ${esc(c)}</label>`).join('')}</div>
+    <div style="display:flex;gap:8px"><input id="sDn" placeholder="Agregar otro destino (ej.: Trinidad)" style="flex:1;min-width:0"><button class="btn out sm" type="button" id="sDa">Agregar</button></div>
     <h3 style="font-size:20px">Anuncios</h3>${f('sAn', 'Cinta superior (separa con ·)', S.anuncio)}<div class="two"><div class="field"><label for="sDf">Próximo drop</label><input id="sDf" type="datetime-local" value="${dl}"></div>${f('sDt', 'Texto del drop', S.drop_texto)}</div>
     <h3 style="font-size:20px">Textos</h3><div class="field"><label for="sEn">Envíos</label><textarea id="sEn">${esc(S.envio_texto)}</textarea></div><div class="field"><label for="sCa">Cambios y devoluciones</label><textarea id="sCa">${esc(S.cambios_texto)}</textarea></div>
     <button class="btn block" type="submit">Guardar ajustes</button></form>`;
@@ -840,6 +849,7 @@ async function vAdmin(sub){
   const qd = qrDaysLeft(); const warn = qd === null ? '' : qd < 0 ? `<div class="note" style="background:#F9E1DF;color:var(--sold)"><b>Tu QR de pago venció.</b> Los clientes ven un aviso para pedírtelo por WhatsApp. Genera uno nuevo en Yasta y súbelo en Ajustes.</div>` : qd <= 10 ? `<div class="note" style="background:#FDF0DA"><b>Tu QR de pago vence en ${qd} día${qd === 1 ? '' : 's'}</b> (${esc(S.qr_vence)}). Genera uno nuevo en Yasta y súbelo en Ajustes.</div>` : '';
   return `<div class="wrap adm">${tabs}${warn}${body}</div>`;
 }
+function destPool(){ const all = [...DESTINOS_BASE, ...CIUDADES, ...(S.destinos_extra || []), ...(S.destinos || [])]; return [...new Set(all)].sort((a, b) => a.localeCompare(b, 'es')); }
 function editHTML(){
   const p = edit; const o = (v, cur) => v === cur ? 'selected' : '';
   return `<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="font-size:26px">${p.id ? 'Editar prenda' : 'Nueva prenda'}</h2><a class="link" href="#admin/prendas">Cancelar</a></div>
@@ -901,7 +911,12 @@ function bindAdmin(){
   // ajustes
   const sF = $('#sF'); if(sF){
     $('#sQr').onchange = async e => { const f = e.target.files[0]; if(!f) return; toast('Subiendo QR…'); try{ S.qr = await API.uploadPhoto(await compress(f)); await API.saveSettings(S); toast('QR guardado'); render(); }catch(ex){ toast('No se pudo subir el QR'); } };
+    const addD = () => { const i = $('#sDn'); const n = i.value.trim().replace(/\s+/g, ' '); if(!n) return; const ex = $$('#sDs input').find(c => c.value.toLowerCase() === n.toLowerCase());
+      if(ex){ ex.checked = true; } else { const l = document.createElement('label'); l.className = 'dchk'; l.innerHTML = `<input type="checkbox" checked value="${esc(n)}"> ${esc(n)}`; $('#sDs').appendChild(l); S.destinos_extra = [...new Set([...(S.destinos_extra || []), n])]; }
+      i.value = ''; toast(`“${n}” agregado · toca Guardar ajustes`); };
+    $('#sDa').onclick = addD; $('#sDn').onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); addD(); } };
     sF.onsubmit = async e => { e.preventDefault(); const v = id => $('#' + id).value.trim(); const w = digits(v('sW')); const df = v('sDf');
+      const ds = $$('#sDs input:checked').map(c => c.value); if(!ds.length){ toast('Marca al menos un destino de envío'); return; } S.destinos = ds;
       Object.assign(S, {whatsapp:w.length === 8 ? '591' + w : w, instagram:v('sIg').replace(/^@/, ''), tiktok:v('sTk').replace(/^@/, ''), ciudad:v('sCi'), titular:v('sTi'), banco:v('sBa'), qr_vence:v('sQv') || null, reserva_min:Math.max(1, parseInt(v('sRh')) || 5), anuncio:v('sAn'), drop_fecha:df ? new Date(df).toISOString() : null, drop_texto:v('sDt'), envio_texto:v('sEn'), cambios_texto:v('sCa')});
       try{ await API.saveSettings(S); chrome(); toast('Ajustes guardados'); }catch(ex){ toast('No se pudo guardar: ' + ex.message); } };
   }
